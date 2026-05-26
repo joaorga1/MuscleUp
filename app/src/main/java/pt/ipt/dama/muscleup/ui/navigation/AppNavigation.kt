@@ -29,9 +29,9 @@ fun AppNavigation(
         navController = navController,
         startDestination = Screen.Login.route
     ) {
-        composable(Screen.Login.route)    { LoginScreen() }
-        composable(Screen.Register.route) { RegisterScreen() }
-        composable(Screen.Home.route)     { HomeScreen() }
+        composable(Screen.Login.route)    { LoginScreen(navController) }
+        composable(Screen.Register.route) { RegisterScreen(navController) }
+        composable(Screen.Home.route)     { HomeScreen(navController) }
         composable(Screen.Workout.route)  { WorkoutScreen() }
         composable(Screen.Exercise.route) { ExerciseScreen() }
         composable(Screen.Profile.route)  { ProfileScreen() }

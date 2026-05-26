@@ -2,10 +2,21 @@ package pt.ipt.dama.muscleup.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Fundos
+val Dark900 = Color(0xFF121212)
+val Dark800 = Color(0xFF1E1E1E)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Primária — Deep Orange (fitness classic)
+val Orange500 = Color(0xFFFF5722)
+val Orange300 = Color(0xFFFF8A65)
+
+// Secundária — âmbar
+val Amber500 = Color(0xFFFF8F00)
+val Amber300 = Color(0xFFFFB74D)
+
+// Conteúdo
+val White90 = Color(0xFFE8E8E8)
+val White60 = Color(0xFF9E9E9E)
+
+// Erro
+val ErrorRed = Color(0xFFCF6679)
