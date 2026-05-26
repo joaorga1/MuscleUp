@@ -23,17 +23,18 @@ sealed class Screen(val route: String) {
 
 @Composable
 fun AppNavigation(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    startDestination: String = Screen.Login.route
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route
+        startDestination = startDestination
     ) {
         composable(Screen.Login.route)    { LoginScreen(navController) }
         composable(Screen.Register.route) { RegisterScreen(navController) }
         composable(Screen.Home.route)     { HomeScreen(navController) }
         composable(Screen.Workout.route)  { WorkoutScreen() }
         composable(Screen.Exercise.route) { ExerciseScreen() }
-        composable(Screen.Profile.route)  { ProfileScreen() }
+        composable(Screen.Profile.route)  { ProfileScreen(navController) }
     }
 }

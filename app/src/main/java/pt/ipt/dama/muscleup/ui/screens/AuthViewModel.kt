@@ -8,18 +8,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.MuscleUpApp
 import pt.ipt.dama.muscleup.data.local.UserEntity
+import pt.ipt.dama.muscleup.data.session.UserSession
 import java.security.MessageDigest
 
 sealed class AuthUiState {
     object Idle : AuthUiState()
     object Loading : AuthUiState()
-    object Success : AuthUiState()
+    data class Success(val userName: String) : AuthUiState()
     data class Error(val message: String) : AuthUiState()
 }
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val userDao = (application as MuscleUpApp).database.userDao()
+    private val sessionPreferences = (application as MuscleUpApp).sessionPreferences
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
@@ -41,7 +43,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             if (user == null || user.passwordHash != hashPassword(password)) {
                 _uiState.value = AuthUiState.Error("Email ou password incorretos")
             } else {
-                _uiState.value = AuthUiState.Success
+                UserSession.set(name = user.name, email = user.email)
+                sessionPreferences.save(email = user.email, name = user.name)
+                _uiState.value = AuthUiState.Success(user.name)
             }
         }
     }
@@ -67,7 +71,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             userDao.insert(UserEntity(name = name, email = email, passwordHash = hashPassword(password)))
-            _uiState.value = AuthUiState.Success
+            UserSession.set(name = name, email = email)
+            sessionPreferences.save(email = email, name = name)
+            _uiState.value = AuthUiState.Success(name)
         }
     }
 
