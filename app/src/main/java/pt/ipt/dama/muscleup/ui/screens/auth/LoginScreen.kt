@@ -1,4 +1,4 @@
-package pt.ipt.dama.muscleup.ui.screens
+package pt.ipt.dama.muscleup.ui.screens.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

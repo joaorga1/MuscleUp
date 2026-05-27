@@ -1,4 +1,4 @@
-package pt.ipt.dama.muscleup.ui.screens
+package pt.ipt.dama.muscleup.ui.screens.home
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -21,6 +21,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         _workouts.value = repository.getWorkouts()
+    }
+
+    fun deleteWorkout(id: String) {
+        _workouts.value = _workouts.value.filter { it.id != id }
     }
 
     fun logout() {

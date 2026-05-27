@@ -1,4 +1,4 @@
-package pt.ipt.dama.muscleup.ui.screens
+package pt.ipt.dama.muscleup.ui.screens.auth
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
