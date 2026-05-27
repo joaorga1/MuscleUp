@@ -5,9 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import pt.ipt.dama.muscleup.MuscleUpApp
-import pt.ipt.dama.muscleup.data.repository.MockWorkoutRepository
+import pt.ipt.dama.muscleup.data.MockWorkoutRepository
 import pt.ipt.dama.muscleup.data.session.UserSession
-import pt.ipt.dama.muscleup.domain.model.Workout
+import pt.ipt.dama.muscleup.model.Workout
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 

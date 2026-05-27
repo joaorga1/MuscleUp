@@ -1,4 +1,4 @@
-package pt.ipt.dama.muscleup.domain.model
+package pt.ipt.dama.muscleup.model
 
 data class MachineConfig(
     val id: String,

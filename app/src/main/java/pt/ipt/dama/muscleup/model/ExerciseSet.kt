@@ -1,4 +1,4 @@
-package pt.ipt.dama.muscleup.domain.model
+package pt.ipt.dama.muscleup.model
 
 data class ExerciseSet(
     val id: String,
@@ -11,3 +11,4 @@ data class ExerciseSet(
 enum class TargetType {
     WEIGHT, TIME
 }
+
