@@ -1,3 +1,23 @@
 <resources>
     <string name="app_name">MuscleUp</string>
+
+    <!-- Workout Types -->
+    <string name="workout_type_forca">Força</string>
+    <string name="workout_type_hipertrofia">Hipertrofia</string>
+    <string name="workout_type_cardio">Cardio</string>
+    <string name="workout_type_mobilidade">Mobilidade</string>
+    <string name="workout_type_hiit">HIIT</string>
+    <string name="workout_type_full_body">Full Body</string>
+
+    <!-- Workout Form -->
+        <string name="workout_form_title_new">Novo treino</string>
+        <string name="workout_form_title_edit">Editar treino</string>
+    <string name="workout_form_field_title">Título</string>
+    <string name="workout_form_field_description">Descrição</string>
+    <string name="workout_form_field_type">Tipo de treino</string>
+    <string name="workout_form_save">Guardar</string>
+
+    <!-- Common -->
+        <string name="content_desc_add">Adicionar</string>
+        <string name="content_desc_edit">Editar</string>
 </resources>
