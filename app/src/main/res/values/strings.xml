@@ -17,7 +17,20 @@
     <string name="workout_form_field_type">Tipo de treino</string>
     <string name="workout_form_save">Guardar</string>
 
+    <!-- Exercise Form -->
+    <string name="exercise_form_title_new">Novo exercício</string>
+    <string name="exercise_form_title_edit">Editar exercício</string>
+    <string name="exercise_form_field_name">Nome</string>
+    <string name="exercise_form_field_description">Descrição</string>
+    <string name="exercise_form_field_target_muscle">Músculo alvo</string>
+    <string name="exercise_form_save">Guardar</string>
+
     <!-- Common -->
-        <string name="content_desc_add">Adicionar</string>
-        <string name="content_desc_edit">Editar</string>
+    <string name="content_desc_add">Adicionar</string>
+    <string name="content_desc_edit">Editar</string>
+    <string name="content_desc_delete">Apagar</string>
+    <string name="delete_exercise_title">Apagar exercício</string>
+    <string name="delete_exercise_message">Tens a certeza que queres apagar \"%s\"?</string>
+    <string name="action_delete">Apagar</string>
+    <string name="action_cancel">Cancelar</string>
 </resources>

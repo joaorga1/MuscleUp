@@ -1,6 +1,7 @@
 package pt.ipt.dama.muscleup.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -15,7 +16,9 @@ import pt.ipt.dama.muscleup.ui.screens.home.HomeScreen
 import pt.ipt.dama.muscleup.ui.screens.home.HomeViewModel
 import pt.ipt.dama.muscleup.ui.screens.home.WorkoutFormScreen
 import pt.ipt.dama.muscleup.ui.screens.profile.ProfileScreen
+import pt.ipt.dama.muscleup.ui.screens.workout.ExerciseFormScreen
 import pt.ipt.dama.muscleup.ui.screens.workout.WorkoutScreen
+import pt.ipt.dama.muscleup.ui.screens.workout.WorkoutViewModel
 
 sealed class Screen(val route: String) {
     object Login    : Screen("login")
@@ -27,6 +30,10 @@ sealed class Screen(val route: String) {
     }
     object Workout  : Screen("workout/{workoutId}") {
         fun go(workoutId: String) = "workout/$workoutId"
+    }
+    object ExerciseForm : Screen("exercise_form/{workoutId}?exerciseId={exerciseId}") {
+        fun create(workoutId: String) = "exercise_form/$workoutId?exerciseId="
+        fun edit(workoutId: String, exerciseId: String) = "exercise_form/$workoutId?exerciseId=$exerciseId"
     }
     object Exercise : Screen("exercise")
     object Profile  : Screen("profile")
@@ -61,7 +68,35 @@ fun AppNavigation(
             arguments = listOf(navArgument("workoutId") { type = NavType.StringType })
         ) { backStackEntry ->
             val workoutId = backStackEntry.arguments?.getString("workoutId") ?: ""
-            WorkoutScreen(navController = navController, workoutId = workoutId, viewModel = homeViewModel)
+            val workoutViewModel: WorkoutViewModel = viewModel(
+                viewModelStoreOwner = backStackEntry,
+                factory = WorkoutViewModel.factory(workoutId)
+            )
+            WorkoutScreen(navController = navController, viewModel = workoutViewModel)
+        }
+        composable(
+            route = Screen.ExerciseForm.route,
+            arguments = listOf(
+                navArgument("workoutId") { type = NavType.StringType },
+                navArgument("exerciseId") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { backStackEntry ->
+            val workoutId = backStackEntry.arguments?.getString("workoutId") ?: ""
+            val exerciseId = backStackEntry.arguments?.getString("exerciseId").orEmpty()
+
+            // Partilha o WorkoutViewModel com o WorkoutScreen para o mesmo workoutId
+            val workoutBackStackEntry = remember(backStackEntry) {
+                navController.getBackStackEntry(Screen.Workout.go(workoutId))
+            }
+            val workoutViewModel: WorkoutViewModel = viewModel(
+                viewModelStoreOwner = workoutBackStackEntry,
+                factory = WorkoutViewModel.factory(workoutId)
+            )
+            ExerciseFormScreen(
+                navController = navController,
+                viewModel = workoutViewModel,
+                exerciseId = exerciseId.ifBlank { null }
+            )
         }
         composable(Screen.Exercise.route) { ExerciseScreen() }
         composable(Screen.Profile.route)  { ProfileScreen(navController) }
