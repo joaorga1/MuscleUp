@@ -50,7 +50,8 @@ import pt.ipt.dama.muscleup.ui.navigation.Screen
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    onLogout: () -> Unit = {}
 ) {
     val workouts by viewModel.workouts.collectAsState()
     val userName = viewModel.userName
@@ -65,12 +66,7 @@ fun HomeScreen(
                 showAvatar = true,
                 userName = userName,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
-                onLogoutClick = {
-                    viewModel.logout()
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
+                onLogoutClick = onLogout
             )
         },
         floatingActionButton = {

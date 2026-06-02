@@ -12,13 +12,17 @@ import androidx.navigation.NavController
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
 
 @Composable
-fun ProfileScreen(navController: NavController) {
+fun ProfileScreen(
+    navController: NavController,
+    onLogout: () -> Unit = {}
+) {
     Scaffold(
         topBar = {
             AppTopBar(
                 title = "Perfil",
                 showBackButton = true,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onLogoutClick = onLogout
             )
         }
     ) { innerPadding ->

@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import pt.ipt.dama.muscleup.MuscleUpApp
 import pt.ipt.dama.muscleup.data.local.AppDatabase
 import pt.ipt.dama.muscleup.data.local.ExerciseEntity
 import pt.ipt.dama.muscleup.data.local.toModel
@@ -27,7 +26,6 @@ class WorkoutViewModel(
     private val db = AppDatabase.getDatabase(application)
     private val workoutDao = db.workoutDao()
     private val exerciseDao = db.exerciseDao()
-    private val sessionPreferences = (application as MuscleUpApp).sessionPreferences
 
     val userName: String get() = UserSession.currentUserName
 
@@ -73,10 +71,6 @@ class WorkoutViewModel(
         }
     }
 
-    fun logout() {
-        sessionPreferences.clear()
-        UserSession.clear()
-    }
 
     companion object {
         fun factory(workoutId: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {

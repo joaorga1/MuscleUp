@@ -50,7 +50,8 @@ import pt.ipt.dama.muscleup.ui.navigation.Screen
 @Composable
 fun WorkoutScreen(
     navController: NavController,
-    viewModel: WorkoutViewModel
+    viewModel: WorkoutViewModel,
+    onLogout: () -> Unit = {}
 ) {
     val workout by viewModel.workout.collectAsState()
     var exerciseToDelete by remember { mutableStateOf<Exercise?>(null) }
@@ -64,12 +65,7 @@ fun WorkoutScreen(
                 showAvatar = true,
                 userName = viewModel.userName,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
-                onLogoutClick = {
-                    viewModel.logout()
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
+                onLogoutClick = onLogout
             )
         },
         floatingActionButton = {
@@ -156,7 +152,10 @@ fun WorkoutScreen(
                             }
                         }
                     ) {
-                        ExerciseCard(exercise = exercise, onClick = { /* Passo 4.3 */ })
+                        ExerciseCard(
+                            exercise = exercise,
+                            onClick = { navController.navigate(Screen.Exercise.go(exercise.id)) }
+                        )
                     }
                 }
             }
