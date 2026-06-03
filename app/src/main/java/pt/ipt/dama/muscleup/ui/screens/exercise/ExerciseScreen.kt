@@ -133,6 +133,7 @@ fun ExercisePreDefinitionTab(
     onAddSet: (reps: Int, weightKg: Float?, durationSeconds: Int?) -> Unit,
     onRemoveSet: (setId: String) -> Unit
 ) {
+    var isEditing by rememberSaveable(exercise.id) { mutableStateOf(false) }
     var repsInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var weightInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var timeInput by rememberSaveable(exercise.id) { mutableStateOf("") }
@@ -156,55 +157,80 @@ fun ExercisePreDefinitionTab(
     ) {
         Text("Pré-definição — ${exercise.name}")
         Spacer(modifier = Modifier.height(12.dp))
+        if (!isEditing) {
+            Button(
+                onClick = { isEditing = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Editar pré-definição")
+            }
+        } else {
+            OutlinedTextField(
+                value = repsInput,
+                onValueChange = {
+                    repsInput = it
+                },
+                label = { Text("Repetições") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        OutlinedTextField(
-            value = repsInput,
-            onValueChange = {
-                repsInput = it
-            },
-            label = { Text("Repetições") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
+            Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = weightInput,
+                onValueChange = {
+                    weightInput = it
+                },
+                label = { Text("Peso (kg)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        OutlinedTextField(
-            value = weightInput,
-            onValueChange = {
-                weightInput = it
-            },
-            label = { Text("Peso (kg)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth()
-        )
+            Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = timeInput,
+                onValueChange = {
+                    timeInput = it
+                },
+                label = { Text("Tempo (s)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        OutlinedTextField(
-            value = timeInput,
-            onValueChange = {
-                timeInput = it
-            },
-            label = { Text("Tempo (s)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        onAddSet(reps, weightKg, durationSeconds)
+                        repsInput = ""
+                        weightInput = ""
+                        timeInput = ""
+                        isEditing = false
+                    },
+                    enabled = isFormValid,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Adicionar série")
+                }
 
-        Button(
-            onClick = {
-                onAddSet(reps, weightKg, durationSeconds)
-
-                repsInput = ""
-                weightInput = ""
-                timeInput = ""
-            },
-            enabled = isFormValid,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Adicionar série")
+                TextButton(
+                    onClick = {
+                        repsInput = ""
+                        weightInput = ""
+                        timeInput = ""
+                        isEditing = false
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Cancelar")
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -225,8 +251,10 @@ fun ExercisePreDefinitionTab(
                     }
                 )
 
-                TextButton(onClick = { onRemoveSet(set.id) }) {
-                    Text("Remover")
+                if (isEditing) {
+                    TextButton(onClick = { onRemoveSet(set.id) }) {
+                        Text("Remover")
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
