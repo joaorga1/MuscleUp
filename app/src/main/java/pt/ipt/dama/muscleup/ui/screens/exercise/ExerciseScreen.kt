@@ -126,9 +126,18 @@ fun ExercisePreDefinitionTab(
     var repsInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var weightInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var timeInput by rememberSaveable(exercise.id) { mutableStateOf("") }
-    var validationMessage by rememberSaveable(exercise.id) { mutableStateOf("") }
 
     val predefinedSets = exercise.sets
+    val repsText = repsInput.trim()
+    val reps = if (repsText.isBlank()) 1 else repsText.toIntOrNull() ?: -1
+    val weightText = weightInput.trim()
+    val timeText = timeInput.trim()
+    val weightKg = if (weightText.isBlank()) null else weightText.toFloatOrNull()
+    val durationSeconds = if (timeText.isBlank()) null else timeText.toIntOrNull()
+    val hasInvalidWeight = weightText.isNotBlank() && (weightKg == null || weightKg <= 0f)
+    val hasInvalidTime = timeText.isNotBlank() && (durationSeconds == null || durationSeconds <= 0)
+    val hasNoTarget = weightKg == null && durationSeconds == null
+    val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime && !hasNoTarget
 
     Column(
         modifier = Modifier
@@ -142,7 +151,6 @@ fun ExercisePreDefinitionTab(
             value = repsInput,
             onValueChange = {
                 repsInput = it
-                validationMessage = ""
             },
             label = { Text("Repetições") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -155,7 +163,6 @@ fun ExercisePreDefinitionTab(
             value = weightInput,
             onValueChange = {
                 weightInput = it
-                validationMessage = ""
             },
             label = { Text("Peso (kg)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -168,47 +175,28 @@ fun ExercisePreDefinitionTab(
             value = timeInput,
             onValueChange = {
                 timeInput = it
-                validationMessage = ""
             },
             label = { Text("Tempo (s)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (validationMessage.isNotBlank()) {
+        if (!isFormValid) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(validationMessage)
+            Text("Repetições: vazio = 1. Preencha peso e/ou tempo com valores > 0.")
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
             onClick = {
-                val repsText = repsInput.trim()
-                val reps = if (repsText.isBlank()) 1 else repsText.toIntOrNull() ?: -1
-
-                val weightText = weightInput.trim()
-                val timeText = timeInput.trim()
-
-                val weightKg = if (weightText.isBlank()) null else weightText.toFloatOrNull()
-                val durationSeconds = if (timeText.isBlank()) null else timeText.toIntOrNull()
-
-                val hasInvalidWeight = weightText.isNotBlank() && (weightKg == null || weightKg <= 0f)
-                val hasInvalidTime = timeText.isNotBlank() && (durationSeconds == null || durationSeconds <= 0)
-                val hasNoTarget = weightKg == null && durationSeconds == null
-
-                if (reps <= 0 || hasInvalidWeight || hasInvalidTime || hasNoTarget) {
-                    validationMessage = "Repetições deve ser > 0 (ou vazio = 1) e deve preencher peso e/ou tempo com valores > 0."
-                    return@Button
-                }
-
                 onAddSet(reps, weightKg, durationSeconds)
 
                 repsInput = ""
                 weightInput = ""
                 timeInput = ""
-                validationMessage = ""
             },
+            enabled = isFormValid,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Adicionar série")

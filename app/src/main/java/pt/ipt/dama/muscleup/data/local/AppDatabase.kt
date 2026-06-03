@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [UserEntity::class, WorkoutEntity::class, ExerciseEntity::class, ExerciseSetEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -54,6 +54,50 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS exercise_sets_new (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        exerciseId TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        seriesOrder INTEGER NOT NULL,
+                        reps INTEGER NOT NULL,
+                        durationSeconds INTEGER NOT NULL,
+                        weightKg REAL NOT NULL,
+                        FOREIGN KEY(exerciseId) REFERENCES exercises(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO exercise_sets_new (id, exerciseId, createdAt, seriesOrder, reps, durationSeconds, weightKg)
+                    SELECT
+                        a.id,
+                        a.exerciseId,
+                        a.createdAt,
+                        (
+                            SELECT COUNT(*)
+                            FROM exercise_sets b
+                            WHERE b.exerciseId = a.exerciseId
+                              AND (
+                                  b.createdAt < a.createdAt
+                                  OR (b.createdAt = a.createdAt AND b.rowid <= a.rowid)
+                              )
+                        ) AS seriesOrder,
+                        a.reps,
+                        a.durationSeconds,
+                        a.weightKg
+                    FROM exercise_sets a
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE exercise_sets")
+                db.execSQL("ALTER TABLE exercise_sets_new RENAME TO exercise_sets")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_exercise_sets_exerciseId ON exercise_sets(exerciseId)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -63,6 +107,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_2_3)
                     .addMigrations(MIGRATION_3_4)
+                    .addMigrations(MIGRATION_4_5)
                     .fallbackToDestructiveMigration(false)
                 .build().also { INSTANCE = it }
             }

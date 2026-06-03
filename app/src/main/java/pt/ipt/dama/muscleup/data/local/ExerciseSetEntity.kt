@@ -20,7 +20,7 @@ data class ExerciseSetEntity(
     @PrimaryKey val id: String,
     val exerciseId: String,
     val createdAt: Long,
-    val targetType: String,
+    val seriesOrder: Int,
     val reps: Int,
     val durationSeconds: Int,
     val weightKg: Float

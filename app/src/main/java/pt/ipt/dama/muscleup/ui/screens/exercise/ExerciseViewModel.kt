@@ -40,16 +40,13 @@ class ExerciseViewModel(
 
     fun addPredefinedSet(reps: Int, weightKg: Float?, durationSeconds: Int?) {
         viewModelScope.launch {
+            val nextSeriesOrder = exerciseSetDao.getNextSeriesOrder(exerciseId)
             exerciseSetDao.insert(
                 ExerciseSetEntity(
                     id = UUID.randomUUID().toString(),
                     exerciseId = exerciseId,
                     createdAt = System.currentTimeMillis(),
-                    targetType = when {
-                        weightKg != null && durationSeconds != null -> "BOTH"
-                        weightKg != null -> "WEIGHT"
-                        else -> "TIME"
-                    },
+                    seriesOrder = nextSeriesOrder,
                     reps = reps,
                     durationSeconds = durationSeconds ?: 0,
                     weightKg = weightKg ?: 0f

@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ExerciseSetDao {
 
-    @Query("SELECT * FROM exercise_sets WHERE exerciseId = :exerciseId ORDER BY createdAt ASC, id ASC")
+    @Query("SELECT * FROM exercise_sets WHERE exerciseId = :exerciseId ORDER BY seriesOrder ASC, createdAt ASC, rowid ASC")
     fun getSetsForExercise(exerciseId: String): Flow<List<ExerciseSetEntity>>
+
+    @Query("SELECT COALESCE(MAX(seriesOrder), 0) + 1 FROM exercise_sets WHERE exerciseId = :exerciseId")
+    suspend fun getNextSeriesOrder(exerciseId: String): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(set: ExerciseSetEntity)
