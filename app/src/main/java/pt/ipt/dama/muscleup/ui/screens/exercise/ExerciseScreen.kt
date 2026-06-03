@@ -34,6 +34,7 @@ import androidx.navigation.NavController
 import pt.ipt.dama.muscleup.model.Exercise
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
 import pt.ipt.dama.muscleup.ui.navigation.Screen
+import pt.ipt.dama.muscleup.model.SessionExerciseSet
 
 @Composable
 fun ExerciseScreen(
@@ -108,7 +109,16 @@ fun ExerciseScreen(
                         )
                         1 -> ExerciseHistoryTab(exercise = currentExercise)
                         2 -> ExercisePersonalRecordTab(exercise = currentExercise)
-                        3 -> ExerciseRecordTab(exercise = currentExercise)
+                        3 -> ExerciseRecordTab(
+                            exercise = currentExercise,
+                            currentSessionSets = viewModel.currentSessionSets.collectAsState().value,
+                            onAddSet = { reps, weightKg, durationSeconds ->
+                                viewModel.addRecordedSet(reps, weightKg, durationSeconds)
+                            },
+                            onRemoveSet = { setId -> viewModel.removeRecordedSet(setId) },
+                            onFinalize = { viewModel.finalizeSession() },
+                            onClear = { viewModel.clearSession() }
+                        )
                         4 -> ExerciseMachineConfigTab(exercise = currentExercise)
                     }
                 }
@@ -181,11 +191,6 @@ fun ExercisePreDefinitionTab(
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (!isFormValid) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Repetições: vazio = 1. Preencha peso e/ou tempo com valores > 0.")
-        }
-
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
@@ -244,9 +249,125 @@ fun ExercisePersonalRecordTab(exercise: Exercise) {
 }
 
 @Composable
-fun ExerciseRecordTab(exercise: Exercise) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+fun ExerciseRecordTab(
+    exercise: Exercise,
+    currentSessionSets: List<SessionExerciseSet>,
+    onAddSet: (reps: Int, weightKg: Float?, durationSeconds: Int?) -> Unit,
+    onRemoveSet: (setId: String) -> Unit,
+    onFinalize: () -> Unit,
+    onClear: () -> Unit
+) {
+    var repsInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+    var weightInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+    var timeInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+
+    val repsText = repsInput.trim()
+    val reps = if (repsText.isBlank()) 1 else repsText.toIntOrNull() ?: -1
+    val weightText = weightInput.trim()
+    val timeText = timeInput.trim()
+    val weightKg = if (weightText.isBlank()) null else weightText.toFloatOrNull()
+    val durationSeconds = if (timeText.isBlank()) null else timeText.toIntOrNull()
+    val hasInvalidWeight = weightText.isNotBlank() && (weightKg == null || weightKg <= 0f)
+    val hasInvalidTime = timeText.isNotBlank() && (durationSeconds == null || durationSeconds <= 0)
+    val hasNoTarget = weightKg == null && durationSeconds == null
+    val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime && !hasNoTarget
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
         Text("Registo — ${exercise.name}")
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = repsInput,
+            onValueChange = { repsInput = it },
+            label = { Text("Repetições") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = weightInput,
+            onValueChange = { weightInput = it },
+            label = { Text("Peso (kg)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = timeInput,
+            onValueChange = { timeInput = it },
+            label = { Text("Tempo (s)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = {
+                onAddSet(reps, weightKg, durationSeconds)
+                repsInput = ""
+                weightInput = ""
+                timeInput = ""
+            },
+            enabled = isFormValid,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Adicionar série")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Séries registadas: ${currentSessionSets.size}")
+        Spacer(modifier = Modifier.height(8.dp))
+
+        currentSessionSets.forEach { set ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = buildString {
+                        append("Série ${set.setOrder}: ${set.reps} reps")
+                        if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
+                        if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
+                    }
+                )
+
+                TextButton(onClick = { onRemoveSet(set.id) }) {
+                    Text("Remover")
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+
+        if (currentSessionSets.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onFinalize,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Finalizar")
+                }
+                TextButton(
+                    onClick = onClear,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Limpar")
+                }
+            }
+        }
     }
 }
 

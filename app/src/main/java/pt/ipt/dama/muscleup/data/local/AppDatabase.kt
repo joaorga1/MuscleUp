@@ -8,8 +8,8 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [UserEntity::class, WorkoutEntity::class, ExerciseEntity::class, ExerciseSetEntity::class],
-    version = 5,
+    entities = [UserEntity::class, WorkoutEntity::class, ExerciseEntity::class, ExerciseSetEntity::class, ExerciseSessionEntity::class, SessionExerciseSetEntity::class],
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -18,6 +18,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun workoutDao(): WorkoutDao
     abstract fun exerciseDao(): ExerciseDao
     abstract fun exerciseSetDao(): ExerciseSetDao
+    abstract fun exerciseSessionDao(): ExerciseSessionDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -98,6 +99,48 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS exercise_sessions (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        exerciseId TEXT NOT NULL,
+                        userId TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        finishedAt INTEGER,
+                        FOREIGN KEY(exerciseId) REFERENCES exercises(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_exercise_sessions_exerciseId ON exercise_sessions(exerciseId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_exercise_sessions_userId ON exercise_sessions(userId)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS session_exercise_sets (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        sessionId TEXT NOT NULL,
+                        reps INTEGER NOT NULL,
+                        durationSeconds INTEGER NOT NULL,
+                        weightKg REAL NOT NULL,
+                        setOrder INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(sessionId) REFERENCES exercise_sessions(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_session_exercise_sets_sessionId ON session_exercise_sets(sessionId)")
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercise_sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'DRAFT'")
+                db.execSQL("UPDATE exercise_sessions SET status = 'FINISHED' WHERE finishedAt IS NOT NULL")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -108,6 +151,8 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_2_3)
                     .addMigrations(MIGRATION_3_4)
                     .addMigrations(MIGRATION_4_5)
+                    .addMigrations(MIGRATION_5_6)
+                    .addMigrations(MIGRATION_6_7)
                     .fallbackToDestructiveMigration(false)
                 .build().also { INSTANCE = it }
             }
