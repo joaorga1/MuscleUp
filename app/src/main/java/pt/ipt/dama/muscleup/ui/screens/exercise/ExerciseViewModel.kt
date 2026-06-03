@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.data.local.AppDatabase
@@ -26,6 +27,18 @@ import java.util.UUID
 
 private const val TAG = "ExerciseViewModel"
 
+data class ExerciseHistorySession(
+    val sessionId: String,
+    val createdAt: Long,
+    val finishedAt: Long?,
+    val sets: List<SessionExerciseSet>
+)
+
+data class ExercisePersonalRecord(
+    val maxWeightKg: Float? = null,
+    val maxDurationSeconds: Int? = null
+)
+
 class ExerciseViewModel(
     application: Application,
     private val exerciseId: String
@@ -39,6 +52,7 @@ class ExerciseViewModel(
     private var currentSessionId: String? = null
     private val _currentSessionSets = MutableStateFlow<List<SessionExerciseSet>>(emptyList())
     val currentSessionSets: StateFlow<List<SessionExerciseSet>> = _currentSessionSets.asStateFlow()
+    private val currentUserId = resolveCurrentUserId()
 
     init {
         restoreDraftSession()
@@ -54,6 +68,36 @@ class ExerciseViewModel(
         exerciseEntity?.toModel(sets = setEntities.map { it.toModel() })
     }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val historySessions: StateFlow<List<ExerciseHistorySession>> = combine(
+        sessionDao.getFinishedSessionsForExercise(exerciseId, currentUserId),
+        sessionDao.getFinishedSetsForExercise(exerciseId, currentUserId)
+    ) { sessions, sets ->
+        val setsBySession = sets
+            .groupBy { it.sessionId }
+            .mapValues { (_, groupedSets) -> groupedSets.sortedByDescending { it.setOrder } }
+
+        sessions
+            .sortedByDescending { it.finishedAt ?: it.createdAt }
+            .map { session ->
+            ExerciseHistorySession(
+                sessionId = session.id,
+                createdAt = session.createdAt,
+                finishedAt = session.finishedAt,
+                sets = setsBySession[session.id].orEmpty().map { it.toModel() }
+            )
+            }
+    }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val personalRecord: StateFlow<ExercisePersonalRecord> = historySessions
+        .map { sessions ->
+            val allSets = sessions.flatMap { it.sets }
+            val maxWeight = allSets.map { it.weightKg }.filter { it > 0f }.maxOrNull()
+            val maxDuration = allSets.map { it.durationSeconds }.filter { it > 0 }.maxOrNull()
+            ExercisePersonalRecord(maxWeightKg = maxWeight, maxDurationSeconds = maxDuration)
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ExercisePersonalRecord())
 
     fun addPredefinedSet(reps: Int, weightKg: Float?, durationSeconds: Int?) {
         viewModelScope.launch {

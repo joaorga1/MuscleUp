@@ -13,15 +13,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -35,6 +39,9 @@ import pt.ipt.dama.muscleup.model.Exercise
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 import pt.ipt.dama.muscleup.model.SessionExerciseSet
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ExerciseScreen(
@@ -43,6 +50,9 @@ fun ExerciseScreen(
     onLogout: () -> Unit = {}
 ) {
     val exercise by viewModel.exercise.collectAsState()
+    val currentSessionSets by viewModel.currentSessionSets.collectAsState()
+    val historySessions by viewModel.historySessions.collectAsState()
+    val personalRecord by viewModel.personalRecord.collectAsState()
     var selectedTabIndex by rememberSaveable(exercise?.id) { mutableIntStateOf(0) }
 
     val tabs = listOf(
@@ -107,11 +117,17 @@ fun ExerciseScreen(
                             },
                             onRemoveSet = { setId -> viewModel.removePredefinedSet(setId) }
                         )
-                        1 -> ExerciseHistoryTab(exercise = currentExercise)
-                        2 -> ExercisePersonalRecordTab(exercise = currentExercise)
+                        1 -> ExerciseHistoryTab(
+                            exercise = currentExercise,
+                            sessions = historySessions
+                        )
+                        2 -> ExercisePersonalRecordTab(
+                            exercise = currentExercise,
+                            personalRecord = personalRecord
+                        )
                         3 -> ExerciseRecordTab(
                             exercise = currentExercise,
-                            currentSessionSets = viewModel.currentSessionSets.collectAsState().value,
+                            currentSessionSets = currentSessionSets,
                             onAddSet = { reps, weightKg, durationSeconds ->
                                 viewModel.addRecordedSet(reps, weightKg, durationSeconds)
                             },
@@ -263,16 +279,78 @@ fun ExercisePreDefinitionTab(
 }
 
 @Composable
-fun ExerciseHistoryTab(exercise: Exercise) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+fun ExerciseHistoryTab(
+    exercise: Exercise,
+    sessions: List<ExerciseHistorySession>
+) {
+    val formatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
         Text("Últimas Execuções — ${exercise.name}")
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (sessions.isEmpty()) {
+            Text("Sem sessões finalizadas para este exercício.")
+            return@Column
+        }
+
+        sessions.forEach { session ->
+            val finishedLabel = session.finishedAt?.let { formatter.format(Date(it)) } ?: "-"
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("Sessão de $finishedLabel")
+                    Text("${session.sets.size} séries")
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Keep historical sets in their natural order (1 -> N).
+                    val orderedSets = session.sets.sortedBy { it.setOrder }
+                    orderedSets.forEachIndexed { setIndex, set ->
+                        Text(
+                            text = buildString {
+                                append("Série ${set.setOrder}: ${set.reps} reps")
+                                if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
+                                if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
+                            }
+                        )
+
+                        if (setIndex < orderedSets.lastIndex) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            HorizontalDivider()
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
     }
 }
 
 @Composable
-fun ExercisePersonalRecordTab(exercise: Exercise) {
+fun ExercisePersonalRecordTab(
+    exercise: Exercise,
+    personalRecord: ExercisePersonalRecord
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text("PR (Recorde Pessoal) — ${exercise.name}")
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = personalRecord.maxWeightKg?.let { "Maior peso: ${it}kg" }
+                ?: "Maior peso: sem registos"
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = personalRecord.maxDurationSeconds?.let { "Maior tempo: ${it}s" }
+                ?: "Maior tempo: sem registos"
+        )
     }
 }
 
@@ -406,4 +484,3 @@ fun ExerciseMachineConfigTab(exercise: Exercise) {
         Text("Configurações: ${exercise.machineConfigs.size}")
     }
 }
-

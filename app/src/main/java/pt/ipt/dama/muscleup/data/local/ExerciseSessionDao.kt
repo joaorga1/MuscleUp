@@ -18,8 +18,24 @@ interface ExerciseSessionDao {
     @Query("SELECT * FROM exercise_sessions WHERE exerciseId = :exerciseId ORDER BY createdAt DESC")
     fun getSessionsForExercise(exerciseId: String): Flow<List<ExerciseSessionEntity>>
 
+    @Query("SELECT * FROM exercise_sessions WHERE exerciseId = :exerciseId AND userId = :userId AND status = 'FINISHED' ORDER BY createdAt DESC")
+    fun getFinishedSessionsForExercise(exerciseId: String, userId: String): Flow<List<ExerciseSessionEntity>>
+
     @Query("SELECT * FROM session_exercise_sets WHERE sessionId = :sessionId ORDER BY setOrder ASC")
     fun getSetsForSession(sessionId: String): Flow<List<SessionExerciseSetEntity>>
+
+    @Query(
+        """
+        SELECT ss.*
+        FROM session_exercise_sets ss
+        INNER JOIN exercise_sessions s ON s.id = ss.sessionId
+        WHERE s.exerciseId = :exerciseId
+          AND s.userId = :userId
+          AND s.status = 'FINISHED'
+        ORDER BY s.createdAt DESC, ss.setOrder ASC
+        """
+    )
+    fun getFinishedSetsForExercise(exerciseId: String, userId: String): Flow<List<SessionExerciseSetEntity>>
 
     @Query("SELECT * FROM exercise_sessions WHERE exerciseId = :exerciseId AND userId = :userId AND status = 'DRAFT' ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestDraftSession(exerciseId: String, userId: String): ExerciseSessionEntity?
