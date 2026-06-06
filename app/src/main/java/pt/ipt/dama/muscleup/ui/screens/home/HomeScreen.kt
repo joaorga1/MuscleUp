@@ -53,6 +53,10 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onLogout: () -> Unit = {}
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.refreshSessionUser()
+    }
+
     val workouts by viewModel.workouts.collectAsState()
     val userName = viewModel.userName
 
