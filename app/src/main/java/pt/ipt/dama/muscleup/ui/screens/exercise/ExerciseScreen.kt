@@ -135,7 +135,13 @@ fun ExerciseScreen(
                             onFinalize = { viewModel.finalizeSession() },
                             onClear = { viewModel.clearSession() }
                         )
-                        4 -> ExerciseMachineConfigTab(exercise = currentExercise)
+                        4 -> ExerciseMachineConfigTab(
+                            exercise = currentExercise,
+                            onAddConfig = { name, description ->
+                                viewModel.addMachineConfig(name, description)
+                            },
+                            onRemoveConfig = { configId -> viewModel.removeMachineConfig(configId) }
+                        )
                     }
                 }
             }
@@ -478,9 +484,100 @@ fun ExerciseRecordTab(
 }
 
 @Composable
-fun ExerciseMachineConfigTab(exercise: Exercise) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+fun ExerciseMachineConfigTab(
+    exercise: Exercise,
+    onAddConfig: (name: String, description: String) -> Unit,
+    onRemoveConfig: (configId: String) -> Unit
+) {
+    var isEditing by rememberSaveable(exercise.id) { mutableStateOf(false) }
+    var nameInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+    var descriptionInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+
+    val isFormValid = nameInput.trim().isNotBlank() && descriptionInput.trim().isNotBlank()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
         Text("Config. Máquina — ${exercise.name}")
-        Text("Configurações: ${exercise.machineConfigs.size}")
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (!isEditing) {
+            Button(
+                onClick = { isEditing = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Editar configurações")
+            }
+        } else {
+            OutlinedTextField(
+                value = nameInput,
+                onValueChange = { nameInput = it },
+                label = { Text("Nome") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = descriptionInput,
+                onValueChange = { descriptionInput = it },
+                label = { Text("Descrição") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        onAddConfig(nameInput.trim(), descriptionInput.trim())
+                        nameInput = ""
+                        descriptionInput = ""
+                        isEditing = false
+                    },
+                    enabled = isFormValid,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Adicionar")
+                }
+                TextButton(
+                    onClick = {
+                        nameInput = ""
+                        descriptionInput = ""
+                        isEditing = false
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (exercise.machineConfigs.isEmpty()) {
+            Text("Sem configurações definidas.")
+        } else {
+            exercise.machineConfigs.forEach { config ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(config.name)
+                        Text(config.description)
+                    }
+                    if (isEditing) {
+                        TextButton(onClick = { onRemoveConfig(config.id) }) {
+                            Text("Remover")
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
     }
 }
+

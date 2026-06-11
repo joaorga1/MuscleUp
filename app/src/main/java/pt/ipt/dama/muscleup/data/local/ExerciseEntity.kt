@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import pt.ipt.dama.muscleup.model.Exercise
 import pt.ipt.dama.muscleup.model.ExerciseSet
+import pt.ipt.dama.muscleup.model.MachineConfig
 
 @Entity(
     tableName = "exercises",
@@ -26,13 +27,15 @@ data class ExerciseEntity(
 )
 
 fun ExerciseEntity.toModel(
-    sets: List<ExerciseSet> = emptyList()
+    sets: List<ExerciseSet> = emptyList(),
+    machineConfigs: List<MachineConfig> = emptyList()
 ) = Exercise(
     id = id,
     name = name,
     description = description,
     targetMuscle = targetMuscle,
-    sets = sets
+    sets = sets,
+    machineConfigs = machineConfigs
 )
 
 

@@ -8,8 +8,8 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [UserEntity::class, WorkoutEntity::class, ExerciseEntity::class, ExerciseSetEntity::class, ExerciseSessionEntity::class, SessionExerciseSetEntity::class],
-    version = 7,
+    entities = [UserEntity::class, WorkoutEntity::class, ExerciseEntity::class, ExerciseSetEntity::class, ExerciseSessionEntity::class, SessionExerciseSetEntity::class, MachineConfigEntity::class],
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -19,6 +19,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun exerciseSetDao(): ExerciseSetDao
     abstract fun exerciseSessionDao(): ExerciseSessionDao
+    abstract fun machineConfigDao(): MachineConfigDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -141,6 +142,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Drop old table if it exists (may have wrong schema from a previous attempt)
+                db.execSQL("DROP TABLE IF EXISTS machine_configs")
+                db.execSQL("DROP INDEX IF EXISTS index_machine_configs_exerciseId")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS machine_configs (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        exerciseId TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(exerciseId) REFERENCES exercises(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_machine_configs_exerciseId ON machine_configs(exerciseId)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -153,6 +175,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_4_5)
                     .addMigrations(MIGRATION_5_6)
                     .addMigrations(MIGRATION_6_7)
+                    .addMigrations(MIGRATION_7_8)
                     .fallbackToDestructiveMigration(false)
                 .build().also { INSTANCE = it }
             }

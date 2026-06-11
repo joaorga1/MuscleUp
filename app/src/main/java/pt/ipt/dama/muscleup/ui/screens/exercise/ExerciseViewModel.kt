@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.data.local.AppDatabase
 import pt.ipt.dama.muscleup.data.local.ExerciseSetEntity
 import pt.ipt.dama.muscleup.data.local.ExerciseSessionEntity
+import pt.ipt.dama.muscleup.data.local.MachineConfigEntity
 import pt.ipt.dama.muscleup.data.local.SessionExerciseSetEntity
 import pt.ipt.dama.muscleup.data.local.toModel
 import pt.ipt.dama.muscleup.data.session.UserSession
@@ -48,6 +49,7 @@ class ExerciseViewModel(
     private val exerciseDao = db.exerciseDao()
     private val exerciseSetDao = db.exerciseSetDao()
     private val sessionDao = db.exerciseSessionDao()
+    private val machineConfigDao = db.machineConfigDao()
 
     private var currentSessionId: String? = null
     private val _currentSessionSets = MutableStateFlow<List<SessionExerciseSet>>(emptyList())
@@ -60,12 +62,16 @@ class ExerciseViewModel(
 
     val userName: String get() = UserSession.currentUserName
 
-    // Carrega exercício e séries pré-definidas de forma reativa
+    // Carrega exercício, séries pré-definidas e configs da máquina de forma reativa
     val exercise: StateFlow<Exercise?> = combine(
         exerciseDao.getExerciseById(exerciseId),
-        exerciseSetDao.getSetsForExercise(exerciseId)
-    ) { exerciseEntity, setEntities ->
-        exerciseEntity?.toModel(sets = setEntities.map { it.toModel() })
+        exerciseSetDao.getSetsForExercise(exerciseId),
+        machineConfigDao.getConfigsForExercise(exerciseId)
+    ) { exerciseEntity, setEntities, configEntities ->
+        exerciseEntity?.toModel(
+            sets = setEntities.map { it.toModel() },
+            machineConfigs = configEntities.map { it.toModel() }
+        )
     }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -119,6 +125,27 @@ class ExerciseViewModel(
     fun removePredefinedSet(setId: String) {
         viewModelScope.launch {
             exerciseSetDao.deleteById(setId)
+        }
+    }
+
+
+    fun addMachineConfig(name: String, description: String) {
+        viewModelScope.launch {
+            machineConfigDao.insert(
+                MachineConfigEntity(
+                    id = UUID.randomUUID().toString(),
+                    exerciseId = exerciseId,
+                    name = name,
+                    description = description,
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    fun removeMachineConfig(configId: String) {
+        viewModelScope.launch {
+            machineConfigDao.deleteById(configId)
         }
     }
 
