@@ -155,7 +155,7 @@ fun ExercisePreDefinitionTab(
     onAddSet: (reps: Int, weightKg: Float?, durationSeconds: Int?) -> Unit,
     onRemoveSet: (setId: String) -> Unit
 ) {
-    var isEditing by rememberSaveable(exercise.id) { mutableStateOf(false) }
+    var isEditing by rememberSaveable(exercise.id) { mutableStateOf(exercise.sets.isEmpty()) }
     var repsInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var weightInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var timeInput by rememberSaveable(exercise.id) { mutableStateOf("") }
@@ -233,7 +233,6 @@ fun ExercisePreDefinitionTab(
                         repsInput = ""
                         weightInput = ""
                         timeInput = ""
-                        isEditing = false
                     },
                     enabled = isFormValid,
                     modifier = Modifier.weight(1f)
@@ -250,7 +249,7 @@ fun ExercisePreDefinitionTab(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Cancelar")
+                    Text("Concluir edição")
                 }
             }
         }
@@ -349,7 +348,10 @@ fun ExercisePersonalRecordTab(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = personalRecord.maxWeightKg?.let { "Maior peso: ${it}kg" }
+            text = personalRecord.maxWeightKg?.let { weight ->
+                val repsLabel = personalRecord.maxWeightReps?.let { " x ${it} reps" }.orEmpty()
+                "Maior peso: ${weight}kg${repsLabel}"
+            }
                 ?: "Maior peso: sem registos"
         )
         Spacer(modifier = Modifier.height(6.dp))
@@ -534,7 +536,6 @@ fun ExerciseMachineConfigTab(
                         onAddConfig(nameInput.trim(), descriptionInput.trim())
                         nameInput = ""
                         descriptionInput = ""
-                        isEditing = false
                     },
                     enabled = isFormValid,
                     modifier = Modifier.weight(1f)
@@ -549,7 +550,7 @@ fun ExerciseMachineConfigTab(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Cancelar")
+                    Text("Concluir edição")
                 }
             }
         }

@@ -37,6 +37,7 @@ data class ExerciseHistorySession(
 
 data class ExercisePersonalRecord(
     val maxWeightKg: Float? = null,
+    val maxWeightReps: Int? = null,
     val maxDurationSeconds: Int? = null
 )
 
@@ -99,9 +100,15 @@ class ExerciseViewModel(
     val personalRecord: StateFlow<ExercisePersonalRecord> = historySessions
         .map { sessions ->
             val allSets = sessions.flatMap { it.sets }
-            val maxWeight = allSets.map { it.weightKg }.filter { it > 0f }.maxOrNull()
+            val heaviestSet = allSets
+                .filter { it.weightKg > 0f }
+                .maxWithOrNull(compareBy<SessionExerciseSet> { it.weightKg }.thenBy { it.reps })
             val maxDuration = allSets.map { it.durationSeconds }.filter { it > 0 }.maxOrNull()
-            ExercisePersonalRecord(maxWeightKg = maxWeight, maxDurationSeconds = maxDuration)
+            ExercisePersonalRecord(
+                maxWeightKg = heaviestSet?.weightKg,
+                maxWeightReps = heaviestSet?.reps,
+                maxDurationSeconds = maxDuration
+            )
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ExercisePersonalRecord())
 
