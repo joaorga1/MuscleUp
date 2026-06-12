@@ -6,8 +6,11 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -28,12 +31,27 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         .map { it?.profilePhotoUri?.ifBlank { null } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    private val _uiEvent = MutableSharedFlow<String>()
+    val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
+
     fun saveProfilePhoto(uri: String) {
-        viewModelScope.launch { userDao.updateProfilePhotoUri(userEmail, uri) }
+        viewModelScope.launch {
+            try {
+                userDao.updateProfilePhotoUri(userEmail, uri)
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao guardar foto. Tenta novamente.")
+            }
+        }
     }
 
     fun removeProfilePhoto() {
-        viewModelScope.launch { userDao.updateProfilePhotoUri(userEmail, "") }
+        viewModelScope.launch {
+            try {
+                userDao.updateProfilePhotoUri(userEmail, "")
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao remover foto. Tenta novamente.")
+            }
+        }
     }
 
     fun createPhotoUri(context: Context): Uri {
@@ -43,10 +61,17 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun saveName(newName: String) {
         val trimmed = newName.trim()
-        if (trimmed.isBlank()) return
+        if (trimmed.isBlank()) {
+            viewModelScope.launch { _uiEvent.emit("O nome não pode estar vazio") }
+            return
+        }
         viewModelScope.launch {
-            userDao.updateName(userEmail, trimmed)
-            UserSession.set(trimmed, userEmail, UserSession.currentUserId)
+            try {
+                userDao.updateName(userEmail, trimmed)
+                UserSession.set(trimmed, userEmail, UserSession.currentUserId)
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao guardar nome. Tenta novamente.")
+            }
         }
     }
 }

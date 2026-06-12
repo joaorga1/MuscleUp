@@ -6,8 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -29,7 +32,6 @@ class WorkoutViewModel(
 
     val userName: String get() = UserSession.currentUserName
 
-    // Combina o treino com os seus exercícios de forma reativa
     val workout: StateFlow<Workout?> = combine(
         workoutDao.getWorkoutById(workoutId),
         exerciseDao.getExercisesForWorkout(workoutId)
@@ -37,37 +39,52 @@ class WorkoutViewModel(
         workoutEntity?.toModel(exercises.map { it.toModel() })
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    private val _uiEvent = MutableSharedFlow<String>()
+    val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
+
     fun addExercise(name: String, description: String, targetMuscle: String) {
         viewModelScope.launch {
-            exerciseDao.insert(
-                ExerciseEntity(
-                    id = UUID.randomUUID().toString(),
-                    workoutId = workoutId,
-                    name = name,
-                    description = description,
-                    targetMuscle = targetMuscle
+            try {
+                exerciseDao.insert(
+                    ExerciseEntity(
+                        id = UUID.randomUUID().toString(),
+                        workoutId = workoutId,
+                        name = name.trim(),
+                        description = description.trim(),
+                        targetMuscle = targetMuscle.trim()
+                    )
                 )
-            )
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao guardar exercício. Tenta novamente.")
+            }
         }
     }
 
     fun editExercise(exerciseId: String, name: String, description: String, targetMuscle: String) {
         viewModelScope.launch {
-            exerciseDao.update(
-                ExerciseEntity(
-                    id = exerciseId,
-                    workoutId = workoutId,
-                    name = name,
-                    description = description,
-                    targetMuscle = targetMuscle
+            try {
+                exerciseDao.update(
+                    ExerciseEntity(
+                        id = exerciseId,
+                        workoutId = workoutId,
+                        name = name.trim(),
+                        description = description.trim(),
+                        targetMuscle = targetMuscle.trim()
+                    )
                 )
-            )
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao atualizar exercício. Tenta novamente.")
+            }
         }
     }
 
     fun deleteExercise(exerciseId: String) {
         viewModelScope.launch {
-            exerciseDao.deleteById(exerciseId)
+            try {
+                exerciseDao.deleteById(exerciseId)
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao apagar exercício. Tenta novamente.")
+            }
         }
     }
 

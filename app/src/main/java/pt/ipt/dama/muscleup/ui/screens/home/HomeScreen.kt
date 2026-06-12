@@ -23,6 +23,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -59,9 +61,12 @@ fun HomeScreen(
 
     val workouts by viewModel.workouts.collectAsState()
     val userName = viewModel.userName
-
-    // workout pendente de confirmação de apagar
     var workoutToDelete by remember { mutableStateOf<Workout?>(null) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { snackbarHostState.showSnackbar(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -77,7 +82,8 @@ fun HomeScreen(
             FloatingActionButton(onClick = { navController.navigate(Screen.WorkoutForm.create()) }) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.content_desc_add))
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(innerPadding),

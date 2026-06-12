@@ -7,11 +7,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -112,51 +115,89 @@ class ExerciseViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ExercisePersonalRecord())
 
+    private val _uiEvent = MutableSharedFlow<String>()
+    val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
+
     fun addPredefinedSet(reps: Int, weightKg: Float?, durationSeconds: Int?) {
+        if (reps <= 0) {
+            viewModelScope.launch { _uiEvent.emit("As repetições têm de ser maiores que 0") }
+            return
+        }
+        if (weightKg != null && weightKg < 0f) {
+            viewModelScope.launch { _uiEvent.emit("O peso não pode ser negativo") }
+            return
+        }
         viewModelScope.launch {
-            val nextSeriesOrder = exerciseSetDao.getNextSeriesOrder(exerciseId)
-            exerciseSetDao.insert(
-                ExerciseSetEntity(
-                    id = UUID.randomUUID().toString(),
-                    exerciseId = exerciseId,
-                    createdAt = System.currentTimeMillis(),
-                    seriesOrder = nextSeriesOrder,
-                    reps = reps,
-                    durationSeconds = durationSeconds ?: 0,
-                    weightKg = weightKg ?: 0f
+            try {
+                val nextSeriesOrder = exerciseSetDao.getNextSeriesOrder(exerciseId)
+                exerciseSetDao.insert(
+                    ExerciseSetEntity(
+                        id = UUID.randomUUID().toString(),
+                        exerciseId = exerciseId,
+                        createdAt = System.currentTimeMillis(),
+                        seriesOrder = nextSeriesOrder,
+                        reps = reps,
+                        durationSeconds = durationSeconds ?: 0,
+                        weightKg = weightKg ?: 0f
+                    )
                 )
-            )
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao guardar série. Tenta novamente.")
+            }
         }
     }
 
     fun removePredefinedSet(setId: String) {
         viewModelScope.launch {
-            exerciseSetDao.deleteById(setId)
+            try {
+                exerciseSetDao.deleteById(setId)
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao remover série. Tenta novamente.")
+            }
         }
     }
 
-
     fun addMachineConfig(name: String, description: String) {
+        if (name.isBlank()) {
+            viewModelScope.launch { _uiEvent.emit("O nome da configuração não pode estar vazio") }
+            return
+        }
         viewModelScope.launch {
-            machineConfigDao.insert(
-                MachineConfigEntity(
-                    id = UUID.randomUUID().toString(),
-                    exerciseId = exerciseId,
-                    name = name,
-                    description = description,
-                    createdAt = System.currentTimeMillis()
+            try {
+                machineConfigDao.insert(
+                    MachineConfigEntity(
+                        id = UUID.randomUUID().toString(),
+                        exerciseId = exerciseId,
+                        name = name.trim(),
+                        description = description.trim(),
+                        createdAt = System.currentTimeMillis()
+                    )
                 )
-            )
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao guardar configuração. Tenta novamente.")
+            }
         }
     }
 
     fun removeMachineConfig(configId: String) {
         viewModelScope.launch {
-            machineConfigDao.deleteById(configId)
+            try {
+                machineConfigDao.deleteById(configId)
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao remover configuração. Tenta novamente.")
+            }
         }
     }
 
     fun addRecordedSet(reps: Int, weightKg: Float?, durationSeconds: Int?) {
+        if (reps <= 0) {
+            viewModelScope.launch { _uiEvent.emit("As repetições têm de ser maiores que 0") }
+            return
+        }
+        if (weightKg != null && weightKg < 0f) {
+            viewModelScope.launch { _uiEvent.emit("O peso não pode ser negativo") }
+            return
+        }
         viewModelScope.launch {
             try {
                 val sessionId = ensureDraftSessionId()
@@ -170,21 +211,24 @@ class ExerciseViewModel(
                     setOrder = setOrder,
                     createdAt = System.currentTimeMillis()
                 )
-
                 sessionDao.insertSessionSet(sessionSet)
                 reloadCurrentSessionSets(sessionId)
-                Log.d(TAG, "Set added to memory: reps=$reps, weight=${weightKg ?: 0f}kg, time=${durationSeconds ?: 0}s, order=$setOrder")
+                Log.d(TAG, "Set added: reps=$reps, weight=${weightKg ?: 0f}kg, time=${durationSeconds ?: 0}s, order=$setOrder")
             } catch (e: Exception) {
                 Log.e(TAG, "Error adding recorded set: ${e.message}", e)
-                e.printStackTrace()
+                _uiEvent.emit("Erro ao registar série. Tenta novamente.")
             }
         }
     }
 
     fun removeRecordedSet(setId: String) {
         viewModelScope.launch {
-            sessionDao.deleteSessionSetById(setId)
-            currentSessionId?.let { reloadCurrentSessionSets(it) }
+            try {
+                sessionDao.deleteSessionSetById(setId)
+                currentSessionId?.let { reloadCurrentSessionSets(it) }
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao remover série. Tenta novamente.")
+            }
         }
     }
 
@@ -192,30 +236,28 @@ class ExerciseViewModel(
         viewModelScope.launch {
             if (currentSessionId != null && _currentSessionSets.value.isNotEmpty()) {
                 try {
-                    Log.d(TAG, "Starting session finalization. SessionId: $currentSessionId, Sets count: ${_currentSessionSets.value.size}")
-
-                    // Mark session as finished
                     val finishTime = System.currentTimeMillis()
                     sessionDao.finalizeSession(currentSessionId!!, finishTime)
-                    Log.d(TAG, "Session finalized with finishedAt: $finishTime")
-
-                    // Clear only in-memory state; session remains persisted as FINISHED.
                     resetCurrentSessionState()
-                    Log.d(TAG, "Session cleared from memory")
+                    _uiEvent.emit("Sessão guardada com sucesso!")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error finalizing session: ${e.message}", e)
-                    e.printStackTrace()
+                    _uiEvent.emit("Erro ao finalizar sessão. Tenta novamente.")
                 }
             } else {
-                Log.w(TAG, "Cannot finalize session. SessionId: $currentSessionId, Sets: ${_currentSessionSets.value.size}")
+                _uiEvent.emit("Adiciona pelo menos uma série antes de finalizar")
             }
         }
     }
 
     fun clearSession() {
         viewModelScope.launch {
-            currentSessionId?.let { sessionDao.deleteSessionById(it) }
-            resetCurrentSessionState()
+            try {
+                currentSessionId?.let { sessionDao.deleteSessionById(it) }
+                resetCurrentSessionState()
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao limpar sessão. Tenta novamente.")
+            }
         }
     }
 
@@ -289,7 +331,3 @@ class ExerciseViewModel(
         }
     }
 }
-
-
-
-

@@ -3,8 +3,11 @@ package pt.ipt.dama.muscleup.ui.screens.home
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -29,6 +32,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _workouts = MutableStateFlow<List<Workout>>(emptyList())
     val workouts: StateFlow<List<Workout>> = _workouts.asStateFlow()
+
+    private val _uiEvent = MutableSharedFlow<String>()
+    val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
 
     init {
         observeWorkoutsForCurrentUser()
@@ -62,15 +68,19 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val userId = _currentUserId.value
         if (userId.isNotBlank()) {
             viewModelScope.launch {
-                workoutDao.insert(
-                    WorkoutEntity(
-                        id = UUID.randomUUID().toString(),
-                        userId = userId,
-                        title = title,
-                        description = description,
-                        type = type.name
+                try {
+                    workoutDao.insert(
+                        WorkoutEntity(
+                            id = UUID.randomUUID().toString(),
+                            userId = userId,
+                            title = title.trim(),
+                            description = description.trim(),
+                            type = type.name
+                        )
                     )
-                )
+                } catch (_: Exception) {
+                    _uiEvent.emit("Erro ao guardar treino. Tenta novamente.")
+                }
             }
         }
     }
@@ -79,21 +89,31 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val userId = _currentUserId.value
         if (userId.isNotBlank()) {
             viewModelScope.launch {
-                workoutDao.update(
-                    WorkoutEntity(
-                        id = id,
-                        userId = userId,
-                        title = title,
-                        description = description,
-                        type = type.name
+                try {
+                    workoutDao.update(
+                        WorkoutEntity(
+                            id = id,
+                            userId = userId,
+                            title = title.trim(),
+                            description = description.trim(),
+                            type = type.name
+                        )
                     )
-                )
+                } catch (_: Exception) {
+                    _uiEvent.emit("Erro ao atualizar treino. Tenta novamente.")
+                }
             }
         }
     }
 
     fun deleteWorkout(id: String) {
-        viewModelScope.launch { workoutDao.deleteById(id) }
+        viewModelScope.launch {
+            try {
+                workoutDao.deleteById(id)
+                } catch (_: Exception) {
+                    _uiEvent.emit("Erro ao apagar treino. Tenta novamente.")
+                }
+        }
     }
 
     fun logout() {

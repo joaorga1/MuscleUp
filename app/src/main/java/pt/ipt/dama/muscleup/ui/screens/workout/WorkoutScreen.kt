@@ -23,6 +23,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -56,6 +58,11 @@ fun WorkoutScreen(
     val workout by viewModel.workout.collectAsState()
     var exerciseToDelete by remember { mutableStateOf<Exercise?>(null) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { snackbarHostState.showSnackbar(it) }
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
@@ -82,7 +89,8 @@ fun WorkoutScreen(
                     }
                 }
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         if (workout == null) {
             Text(

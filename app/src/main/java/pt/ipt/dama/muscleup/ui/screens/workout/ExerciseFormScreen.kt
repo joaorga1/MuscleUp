@@ -79,17 +79,15 @@ fun ExerciseFormScreen(
             )
             Button(
                 onClick = {
-                    if (name.isNotBlank()) {
-                        if (existingExercise != null) {
-                            viewModel.editExercise(existingExercise.id, name, description, targetMuscle)
-                        } else {
-                            viewModel.addExercise(name, description, targetMuscle)
-                        }
-                        navController.popBackStack()
+                    if (existingExercise != null) {
+                        viewModel.editExercise(existingExercise.id, name, description, targetMuscle)
+                    } else {
+                        viewModel.addExercise(name, description, targetMuscle)
                     }
+                    navController.popBackStack()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && targetMuscle.isNotBlank()
             ) {
                 Text(stringResource(R.string.exercise_form_save))
             }
