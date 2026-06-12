@@ -56,6 +56,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 @Composable
 fun ProfileScreen(
@@ -70,6 +71,7 @@ fun ProfileScreen(
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var isEditingName by remember { mutableStateOf(false) }
     var nameInput by remember { mutableStateOf(viewModel.userName) }
+    var showPasswordDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
@@ -279,14 +281,94 @@ fun ProfileScreen(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = onLogout,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Terminar Sessão")
+                Button(
+                    onClick = { showPasswordDialog = true },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Alterar password")
+                }
+                Button(
+                    onClick = onLogout,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Terminar Sessão")
+                }
             }
         }
+    }
+
+    // Diálogo de alterar password
+    if (showPasswordDialog) {
+        var currentPw by remember { mutableStateOf("") }
+        var newPw by remember { mutableStateOf("") }
+        var confirmPw by remember { mutableStateOf("") }
+        val passwordError by viewModel.passwordDialogError.collectAsState()
+
+        LaunchedEffect(Unit) {
+            viewModel.passwordSuccess.collect {
+                showPasswordDialog = false
+                viewModel.clearPasswordError()
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = {
+                showPasswordDialog = false
+                viewModel.clearPasswordError()
+            },
+            title = { Text("Alterar password") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = currentPw,
+                        onValueChange = { currentPw = it; viewModel.clearPasswordError() },
+                        label = { Text("Password atual") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = newPw,
+                        onValueChange = { newPw = it; viewModel.clearPasswordError() },
+                        label = { Text("Nova password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = confirmPw,
+                        onValueChange = { confirmPw = it; viewModel.clearPasswordError() },
+                        label = { Text("Confirmar nova password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (passwordError != null) {
+                        Text(
+                            text = passwordError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.changePassword(currentPw, newPw, confirmPw) }) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPasswordDialog = false
+                    viewModel.clearPasswordError()
+                }) { Text("Cancelar") }
+            }
+        )
     }
 }
 

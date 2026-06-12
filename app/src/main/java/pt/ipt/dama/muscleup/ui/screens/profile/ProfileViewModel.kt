@@ -7,10 +7,12 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -33,6 +35,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     private val _uiEvent = MutableSharedFlow<String>()
     val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
+
+    private val _passwordDialogError = MutableStateFlow<String?>(null)
+    val passwordDialogError: StateFlow<String?> = _passwordDialogError.asStateFlow()
+
+    private val _passwordSuccess = MutableSharedFlow<Unit>()
+    val passwordSuccess: SharedFlow<Unit> = _passwordSuccess.asSharedFlow()
 
     fun saveProfilePhoto(uri: String) {
         viewModelScope.launch {
@@ -73,5 +81,44 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 _uiEvent.emit("Erro ao guardar nome. Tenta novamente.")
             }
         }
+    }
+
+    fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String) {
+        viewModelScope.launch {
+            _passwordDialogError.value = null
+            when {
+                currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank() ->
+                    _passwordDialogError.value = "Preenche todos os campos"
+                newPassword.length < 6 ->
+                    _passwordDialogError.value = "A nova password deve ter pelo menos 6 caracteres"
+                newPassword == currentPassword ->
+                    _passwordDialogError.value = "A nova password não pode ser igual à atual"
+                newPassword != confirmPassword ->
+                    _passwordDialogError.value = "As passwords não coincidem"
+                else -> {
+                    try {
+                        val user = userDao.findByEmail(userEmail)
+                        if (user == null || user.passwordHash != hashPassword(currentPassword)) {
+                            _passwordDialogError.value = "Password atual incorreta"
+                        } else {
+                            userDao.updatePassword(userEmail, hashPassword(newPassword))
+                            _passwordSuccess.emit(Unit)
+                            _uiEvent.emit("Password alterada com sucesso!")
+                        }
+                    } catch (_: Exception) {
+                        _passwordDialogError.value = "Erro ao alterar password. Tenta novamente."
+                    }
+                }
+            }
+        }
+    }
+
+    fun clearPasswordError() {
+        _passwordDialogError.value = null
+    }
+
+    private fun hashPassword(password: String): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        return digest.digest(password.toByteArray()).joinToString("") { "%02x".format(it) }
     }
 }
