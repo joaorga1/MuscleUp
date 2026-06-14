@@ -1,6 +1,7 @@
 package pt.ipt.dama.muscleup.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -95,19 +96,34 @@ fun AppNavigation(
             val workoutId = backStackEntry.arguments?.getString("workoutId") ?: ""
             val exerciseId = backStackEntry.arguments?.getString("exerciseId").orEmpty()
 
-            // Partilha o WorkoutViewModel com o WorkoutScreen para o mesmo workoutId
+            // Tenta partilhar o WorkoutViewModel com o WorkoutScreen para o mesmo workoutId.
+            // Se a back stack não tiver o WorkoutScreen (ex: restauro de estado pelo Android),
+            // navega para Home em vez de crashar.
             val workoutBackStackEntry = remember(backStackEntry) {
-                navController.getBackStackEntry(Screen.Workout.go(workoutId))
+                try {
+                    navController.getBackStackEntry(Screen.Workout.go(workoutId))
+                } catch (_: IllegalArgumentException) {
+                    null
+                }
             }
-            val workoutViewModel: WorkoutViewModel = viewModel(
-                viewModelStoreOwner = workoutBackStackEntry,
-                factory = WorkoutViewModel.factory(workoutId)
-            )
-            ExerciseFormScreen(
-                navController = navController,
-                viewModel = workoutViewModel,
-                exerciseId = exerciseId.ifBlank { null }
-            )
+
+            if (workoutBackStackEntry == null) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            } else {
+                val workoutViewModel: WorkoutViewModel = viewModel(
+                    viewModelStoreOwner = workoutBackStackEntry,
+                    factory = WorkoutViewModel.factory(workoutId)
+                )
+                ExerciseFormScreen(
+                    navController = navController,
+                    viewModel = workoutViewModel,
+                    exerciseId = exerciseId.ifBlank { null }
+                )
+            }
         }
         composable(
             route = Screen.Exercise.route,

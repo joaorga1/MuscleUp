@@ -1,11 +1,26 @@
 *.iml
 .gradle
 local.properties
-.idea/
-.idea/co
-.DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 ROADMAP.md
+## IDE ##
+.idea/
+*.swp
+*.swo
+
+## Keystore — NUNCA commitar estas chaves ##
+*.jks
+*.keystore
+keystore.properties
+
+## Outputs — gerados automaticamente ##
+*.aab
+*.apk
+*.ap_
+
+## OS ##
+Thumbs.db
+.DS_Store

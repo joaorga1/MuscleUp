@@ -14,16 +14,21 @@ object DatabaseSeeder {
         // Só popula se o utilizador ainda não tiver treinos
         if (workoutDao.getCountForUser(userId) > 0) return
 
+        // IDs únicos por utilizador para evitar conflitos entre contas
+        val wPush  = java.util.UUID.randomUUID().toString()
+        val wPull  = java.util.UUID.randomUUID().toString()
+        val wCardio = java.util.UUID.randomUUID().toString()
+
         // Treinos
-        workoutDao.insert(WorkoutEntity("w1", userId, "Push Day", "Peito, ombros e tríceps", "FORCA"))
-        workoutDao.insert(WorkoutEntity("w2", userId, "Pull Day", "Costas e bíceps", "FORCA"))
-        workoutDao.insert(WorkoutEntity("w3", userId, "Core & Cardio", "Abdominais e resistência", "CARDIO"))
+        workoutDao.insert(WorkoutEntity(wPush,   userId, "Push Day",      "Peito, ombros e tríceps",    "FORCA"))
+        workoutDao.insert(WorkoutEntity(wPull,   userId, "Pull Day",      "Costas e bíceps",            "FORCA"))
+        workoutDao.insert(WorkoutEntity(wCardio, userId, "Core & Cardio", "Abdominais e resistência",   "CARDIO"))
 
         // Exercícios
-        exerciseDao.insert(ExerciseEntity("e1", "w1", "Supino Plano", "Exercício composto para peito", "Peito"))
-        exerciseDao.insert(ExerciseEntity("e2", "w1", "Press Militar", "Exercício composto para ombros", "Ombros"))
-        exerciseDao.insert(ExerciseEntity("e3", "w2", "Remada Curvada", "Exercício composto para costas", "Costas"))
-        exerciseDao.insert(ExerciseEntity("e4", "w3", "Prancha", "Isométrico para core", "Core"))
+        exerciseDao.insert(ExerciseEntity(java.util.UUID.randomUUID().toString(), wPush,   "Supino Plano",   "Exercício composto para peito",   "Peito"))
+        exerciseDao.insert(ExerciseEntity(java.util.UUID.randomUUID().toString(), wPush,   "Press Militar",  "Exercício composto para ombros",  "Ombros"))
+        exerciseDao.insert(ExerciseEntity(java.util.UUID.randomUUID().toString(), wPull,   "Remada Curvada", "Exercício composto para costas",  "Costas"))
+        exerciseDao.insert(ExerciseEntity(java.util.UUID.randomUUID().toString(), wCardio, "Prancha",        "Isométrico para core",            "Core"))
     }
 }
 

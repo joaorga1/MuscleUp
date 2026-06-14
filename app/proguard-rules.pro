@@ -12,10 +12,35 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ─── Stack traces legíveis ───────────────────────────────────────────────────
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ─── Kotlin Metadata (necessário para reflection interna do Kotlin) ───────────
+-keep class kotlin.Metadata { *; }
+-dontwarn kotlin.**
+-dontwarn kotlinx.coroutines.**
+
+# ─── Room — apenas o necessário ──────────────────────────────────────────────
+-keep class * extends androidx.room.RoomDatabase { *; }
+-dontwarn androidx.room.**
+
+# ─── App — Entities e Models (Room usa reflection nestes) ────────────────────
+-keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao interface * { *; }
+-keepclassmembers class pt.ipt.dama.muscleup.data.local.** {
+    <init>(...);
+    <fields>;
+}
+-keepclassmembers class pt.ipt.dama.muscleup.model.** {
+    <init>(...);
+    <fields>;
+}
+
+# ─── Coil ────────────────────────────────────────────────────────────────────
+-dontwarn coil.**
+
+# ─── Navigation e Lifecycle ──────────────────────────────────────────────────
+-dontwarn androidx.navigation.**
+-dontwarn androidx.lifecycle.**
+-dontwarn androidx.compose.**
