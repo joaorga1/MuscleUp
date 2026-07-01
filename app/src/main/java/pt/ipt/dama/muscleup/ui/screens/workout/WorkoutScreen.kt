@@ -56,6 +56,7 @@ fun WorkoutScreen(
     onLogout: () -> Unit = {}
 ) {
     val workout by viewModel.workout.collectAsState()
+    val profilePhotoUri by viewModel.profilePhotoUri.collectAsState()
     var exerciseToDelete by remember { mutableStateOf<Exercise?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -71,6 +72,7 @@ fun WorkoutScreen(
                 onBackClick = { navController.popBackStack() },
                 showAvatar = true,
                 userName = viewModel.userName,
+                profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onLogoutClick = onLogout
             )

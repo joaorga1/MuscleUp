@@ -53,6 +53,7 @@ fun ExerciseScreen(
     onLogout: () -> Unit = {}
 ) {
     val exercise by viewModel.exercise.collectAsState()
+    val profilePhotoUri by viewModel.profilePhotoUri.collectAsState()
     val currentSessionSets by viewModel.currentSessionSets.collectAsState()
     val historySessions by viewModel.historySessions.collectAsState()
     val personalRecord by viewModel.personalRecord.collectAsState()
@@ -79,6 +80,7 @@ fun ExerciseScreen(
                 onBackClick = { navController.popBackStack() },
                 showAvatar = true,
                 userName = viewModel.userName,
+                profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onLogoutClick = onLogout
             )

@@ -54,6 +54,7 @@ class ExerciseViewModel(
     private val exerciseSetDao = db.exerciseSetDao()
     private val sessionDao = db.exerciseSessionDao()
     private val machineConfigDao = db.machineConfigDao()
+    private val userDao = db.userDao()
 
     private var currentSessionId: String? = null
     private val _currentSessionSets = MutableStateFlow<List<SessionExerciseSet>>(emptyList())
@@ -65,6 +66,11 @@ class ExerciseViewModel(
     }
 
     val userName: String get() = UserSession.currentUserName
+
+    val profilePhotoUri: StateFlow<String?> = userDao
+        .getUserByEmailFlow(UserSession.currentUserEmail)
+        .map { it?.profilePhotoUri?.ifBlank { null } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     // Carrega exercício, séries pré-definidas e configs da máquina de forma reativa
     val exercise: StateFlow<Exercise?> = combine(

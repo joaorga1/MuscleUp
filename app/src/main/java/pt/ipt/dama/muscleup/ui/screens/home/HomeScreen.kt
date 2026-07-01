@@ -61,6 +61,7 @@ fun HomeScreen(
 
     val workouts by viewModel.workouts.collectAsState()
     val userName = viewModel.userName
+    val profilePhotoUri by viewModel.profilePhotoUri.collectAsState()
     var workoutToDelete by remember { mutableStateOf<Workout?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -74,6 +75,7 @@ fun HomeScreen(
                 title = "Os meus treinos",
                 showAvatar = true,
                 userName = userName,
+                profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onLogoutClick = onLogout
             )

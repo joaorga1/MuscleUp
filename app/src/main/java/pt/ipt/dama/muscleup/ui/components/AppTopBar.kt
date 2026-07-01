@@ -3,6 +3,7 @@ package pt.ipt.dama.muscleup.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -24,8 +25,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +37,7 @@ fun AppTopBar(
     title: String,
     showAvatar: Boolean = false,
     userName: String = "",
+    profilePhotoUri: String? = null,
     showBackButton: Boolean = false,
     onBackClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
@@ -51,6 +56,7 @@ fun AppTopBar(
             if (showAvatar) {
                 UserAvatar(
                     userName = userName,
+                    profilePhotoUri = profilePhotoUri,
                     onProfileClick = onProfileClick,
                     onLogoutClick = onLogoutClick
                 )
@@ -63,6 +69,7 @@ fun AppTopBar(
 fun UserAvatar(
     userName: String,
     modifier: Modifier = Modifier,
+    profilePhotoUri: String? = null,
     onProfileClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
 ) {
@@ -78,11 +85,22 @@ fun UserAvatar(
                 .clickable { expanded = true },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = initial,
-                color = MaterialTheme.colorScheme.onPrimary,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-            )
+            if (profilePhotoUri != null) {
+                AsyncImage(
+                    model = profilePhotoUri.toUri(),
+                    contentDescription = "Foto de perfil",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                )
+            } else {
+                Text(
+                    text = initial,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                )
+            }
         }
 
         DropdownMenu(
