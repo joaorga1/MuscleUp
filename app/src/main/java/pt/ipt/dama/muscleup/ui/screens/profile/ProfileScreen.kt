@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -190,7 +191,7 @@ fun ProfileScreen(
                 ) {
                     if (profilePhotoUri != null) {
                         AsyncImage(
-                            model = Uri.parse(profilePhotoUri),
+                            model = profilePhotoUri!!.toUri(),
                             contentDescription = "Foto de perfil",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()

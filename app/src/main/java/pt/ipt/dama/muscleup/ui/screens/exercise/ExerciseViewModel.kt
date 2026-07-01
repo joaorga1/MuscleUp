@@ -1,7 +1,11 @@
 package pt.ipt.dama.muscleup.ui.screens.exercise
 
 import android.app.Application
+import android.content.Context
+import android.net.Uri
 import android.util.Log
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -19,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.data.local.AppDatabase
+import pt.ipt.dama.muscleup.data.local.ExercisePhotoEntity
 import pt.ipt.dama.muscleup.data.local.ExerciseSetEntity
 import pt.ipt.dama.muscleup.data.local.ExerciseSessionEntity
 import pt.ipt.dama.muscleup.data.local.MachineConfigEntity
@@ -26,7 +31,9 @@ import pt.ipt.dama.muscleup.data.local.SessionExerciseSetEntity
 import pt.ipt.dama.muscleup.data.local.toModel
 import pt.ipt.dama.muscleup.data.session.UserSession
 import pt.ipt.dama.muscleup.model.Exercise
+import pt.ipt.dama.muscleup.model.ExercisePhoto
 import pt.ipt.dama.muscleup.model.SessionExerciseSet
+import java.io.File
 import java.util.UUID
 
 private const val TAG = "ExerciseViewModel"
@@ -55,6 +62,7 @@ class ExerciseViewModel(
     private val sessionDao = db.exerciseSessionDao()
     private val machineConfigDao = db.machineConfigDao()
     private val userDao = db.userDao()
+    private val exercisePhotoDao = db.exercisePhotoDao()
 
     private var currentSessionId: String? = null
     private val _currentSessionSets = MutableStateFlow<List<SessionExerciseSet>>(emptyList())
@@ -120,6 +128,11 @@ class ExerciseViewModel(
             )
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ExercisePersonalRecord())
+
+    val photos: StateFlow<List<ExercisePhoto>> = exercisePhotoDao
+        .getPhotosForExercise(exerciseId)
+        .map { entities -> entities.map { it.toModel() } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _uiEvent = MutableSharedFlow<String>()
     val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
@@ -192,6 +205,55 @@ class ExerciseViewModel(
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao remover configuração. Tenta novamente.")
             }
+        }
+    }
+
+    fun createPhotoUri(context: Context): Uri {
+        val dir = File(context.filesDir, "exercise_photos").apply { if (!exists()) mkdirs() }
+        val file = File(dir, "${exerciseId}_${UUID.randomUUID()}.jpg")
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
+
+    fun addPhoto(uri: String) {
+        viewModelScope.launch {
+            try {
+                exercisePhotoDao.insert(
+                    ExercisePhotoEntity(
+                        id = UUID.randomUUID().toString(),
+                        exerciseId = exerciseId,
+                        uri = uri,
+                        createdAt = System.currentTimeMillis()
+                    )
+                )
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao guardar foto. Tenta novamente.")
+            }
+        }
+    }
+
+    fun removePhoto(photoId: String) {
+        viewModelScope.launch {
+            try {
+                val uri = exercisePhotoDao.getUriById(photoId)
+                exercisePhotoDao.deleteById(photoId)
+                uri?.let { deleteLocalPhotoFile(it) }
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao remover foto. Tenta novamente.")
+            }
+        }
+    }
+
+    private fun deleteLocalPhotoFile(uriString: String) {
+        try {
+            val context = getApplication<Application>()
+            val uri = uriString.toUri()
+            // Só apaga o ficheiro se pertencer ao nosso FileProvider (fotos tiradas com a câmara).
+            // Fotos escolhidas da galeria (content:// do MediaStore) não são tocadas.
+            if (uri.authority == "${context.packageName}.fileprovider") {
+                context.contentResolver.delete(uri, null, null)
+            }
+        } catch (_: Exception) {
+            // Falha na limpeza do ficheiro não é crítica — o registo já foi removido da BD.
         }
     }
 

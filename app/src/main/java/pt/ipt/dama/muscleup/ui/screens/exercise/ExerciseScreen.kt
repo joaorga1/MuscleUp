@@ -1,5 +1,13 @@
 package pt.ipt.dama.muscleup.ui.screens.exercise
 
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,14 +15,26 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -35,10 +55,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import pt.ipt.dama.muscleup.model.Exercise
+import pt.ipt.dama.muscleup.model.ExercisePhoto
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 import pt.ipt.dama.muscleup.model.SessionExerciseSet
@@ -57,11 +86,53 @@ fun ExerciseScreen(
     val currentSessionSets by viewModel.currentSessionSets.collectAsState()
     val historySessions by viewModel.historySessions.collectAsState()
     val personalRecord by viewModel.personalRecord.collectAsState()
+    val photos by viewModel.photos.collectAsState()
     var selectedTabIndex by rememberSaveable(exercise?.id) { mutableIntStateOf(0) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { snackbarHostState.showSnackbar(it) }
+    }
+
+    val context = LocalContext.current
+    var showPhotoDialog by remember { mutableStateOf(false) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) pendingCameraUri?.let { viewModel.addPhoto(it.toString()) }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) pendingCameraUri?.let { cameraLauncher.launch(it) }
+    }
+
+    fun launchCamera() {
+        val uri = viewModel.createPhotoUri(context)
+        pendingCameraUri = uri
+        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            cameraLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {}
+            viewModel.addPhoto(uri.toString())
+        }
     }
 
     val tabs = listOf(
@@ -71,6 +142,34 @@ fun ExerciseScreen(
         "Registo",
         "Config. Máquina"
     )
+
+    if (showPhotoDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoDialog = false },
+            title = { Text("Adicionar foto") },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = { showPhotoDialog = false; launchCamera() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Câmara") }
+                    TextButton(
+                        onClick = {
+                            showPhotoDialog = false
+                            galleryLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Galeria") }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPhotoDialog = false }) { Text("Cancelar") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -99,6 +198,13 @@ fun ExerciseScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
+                ExercisePhotoGallery(
+                    photos = photos,
+                    onAddClick = { showPhotoDialog = true },
+                    onRemove = { photoId -> viewModel.removePhoto(photoId) }
+                )
+                HorizontalDivider()
+
                 // Tab Row
                 PrimaryTabRow(
                     selectedTabIndex = selectedTabIndex,
@@ -589,6 +695,83 @@ fun ExerciseMachineConfigTab(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
+        }
+    }
+}
+
+@Composable
+fun ExercisePhotoGallery(
+    photos: List<ExercisePhoto>,
+    onAddClick: () -> Unit,
+    onRemove: (photoId: String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = "Fotos",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .size(84.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onAddClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Adicionar foto",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            items(photos, key = { it.id }) { photo ->
+                Box(modifier = Modifier.size(84.dp)) {
+                    AsyncImage(
+                        model = photo.uri.toUri(),
+                        contentDescription = "Foto do exercício",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                    IconButton(
+                        onClick = { onRemove(photo.id) },
+                        modifier = Modifier
+                            .size(22.dp)
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remover foto",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (photos.isEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Sem fotos. Toca em + para adicionar.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
