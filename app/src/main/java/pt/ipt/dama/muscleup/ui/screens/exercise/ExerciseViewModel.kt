@@ -176,7 +176,7 @@ class ExerciseViewModel(
         }
     }
 
-    fun addMachineConfig(name: String, description: String) {
+    fun addMachineConfig(name: String, description: String, angleDegrees: Float? = null) {
         if (name.isBlank()) {
             viewModelScope.launch { _uiEvent.emit("O nome da configuração não pode estar vazio") }
             return
@@ -189,7 +189,8 @@ class ExerciseViewModel(
                         exerciseId = exerciseId,
                         name = name.trim(),
                         description = description.trim(),
-                        createdAt = System.currentTimeMillis()
+                        createdAt = System.currentTimeMillis(),
+                        angleDegrees = angleDegrees
                     )
                 )
             } catch (_: Exception) {

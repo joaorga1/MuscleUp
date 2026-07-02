@@ -21,11 +21,13 @@ data class MachineConfigEntity(
     val exerciseId: String,
     val name: String,
     val description: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val angleDegrees: Float? = null
 )
 
 fun MachineConfigEntity.toModel() = MachineConfig(
     id = id,
     name = name,
-    description = description
+    description = description,
+    angleDegrees = angleDegrees
 )

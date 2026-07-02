@@ -45,6 +45,7 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,6 +54,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -254,8 +256,8 @@ fun ExerciseScreen(
                         )
                         4 -> ExerciseMachineConfigTab(
                             exercise = currentExercise,
-                            onAddConfig = { name, description ->
-                                viewModel.addMachineConfig(name, description)
+                            onAddConfig = { name, description, angle ->
+                                viewModel.addMachineConfig(name, description, angle)
                             },
                             onRemoveConfig = { configId -> viewModel.removeMachineConfig(configId) }
                         )
@@ -605,14 +607,18 @@ fun ExerciseRecordTab(
 @Composable
 fun ExerciseMachineConfigTab(
     exercise: Exercise,
-    onAddConfig: (name: String, description: String) -> Unit,
+    onAddConfig: (name: String, description: String, angleDegrees: Float?) -> Unit,
     onRemoveConfig: (configId: String) -> Unit
 ) {
     var isEditing by rememberSaveable(exercise.id) { mutableStateOf(false) }
     var nameInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var descriptionInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+    var angleInput by rememberSaveable(exercise.id) { mutableStateOf("") }
 
-    val isFormValid = nameInput.trim().isNotBlank() && descriptionInput.trim().isNotBlank()
+    val angleText = angleInput.trim()
+    val angleValue = if (angleText.isBlank()) null else angleText.toFloatOrNull()
+    val hasInvalidAngle = angleText.isNotBlank() && angleValue == null
+    val isFormValid = nameInput.trim().isNotBlank() && descriptionInput.trim().isNotBlank() && !hasInvalidAngle
 
     Column(
         modifier = Modifier
@@ -643,6 +649,14 @@ fun ExerciseMachineConfigTab(
                 label = { Text("Descrição") },
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AngleInputField(
+                value = angleInput,
+                onValueChange = { angleInput = it },
+                isError = hasInvalidAngle
+            )
+
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -650,9 +664,10 @@ fun ExerciseMachineConfigTab(
             ) {
                 Button(
                     onClick = {
-                        onAddConfig(nameInput.trim(), descriptionInput.trim())
+                        onAddConfig(nameInput.trim(), descriptionInput.trim(), angleValue)
                         nameInput = ""
                         descriptionInput = ""
+                        angleInput = ""
                     },
                     enabled = isFormValid,
                     modifier = Modifier.weight(1f)
@@ -663,6 +678,7 @@ fun ExerciseMachineConfigTab(
                     onClick = {
                         nameInput = ""
                         descriptionInput = ""
+                        angleInput = ""
                         isEditing = false
                     },
                     modifier = Modifier.weight(1f)
@@ -686,6 +702,13 @@ fun ExerciseMachineConfigTab(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(config.name)
                         Text(config.description)
+                        config.angleDegrees?.let { angle ->
+                            Text(
+                                text = "Ângulo: ${"%.1f".format(angle)}°",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                     if (isEditing) {
                         TextButton(onClick = { onRemoveConfig(config.id) }) {
@@ -698,6 +721,46 @@ fun ExerciseMachineConfigTab(
         }
     }
 }
+
+/**
+ * Campo opcional para o ângulo da máquina. Pode ser preenchido manualmente
+ * ou, se o dispositivo tiver acelerómetro, através do botão "Usar sensor"
+ * que copia a leitura atual do inclinómetro para o campo.
+ */
+@Composable
+fun AngleInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    isError: Boolean
+) {
+    val inclinometerViewModel: InclinometerViewModel = viewModel()
+    val liveAngle by inclinometerViewModel.angleDegrees.collectAsState()
+
+    DisposableEffect(Unit) {
+        inclinometerViewModel.start()
+        onDispose { inclinometerViewModel.stop() }
+    }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text("Ângulo (°) — opcional") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        isError = isError,
+        supportingText = if (isError) {
+            { Text("Ângulo inválido") }
+        } else null,
+        trailingIcon = if (inclinometerViewModel.isSensorAvailable) {
+            {
+                TextButton(onClick = { onValueChange("%.1f".format(liveAngle)) }) {
+                    Text("Usar sensor")
+                }
+            }
+        } else null,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
 
 @Composable
 fun ExercisePhotoGallery(
