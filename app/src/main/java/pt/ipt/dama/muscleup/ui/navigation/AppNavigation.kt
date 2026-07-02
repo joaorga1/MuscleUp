@@ -1,8 +1,15 @@
 package pt.ipt.dama.muscleup.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -60,7 +67,14 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        enterTransition = { fadeIn(animationSpec = tween(200)) },
+        exitTransition = { fadeOut(animationSpec = tween(200)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(200)) },
+        popExitTransition = { fadeOut(animationSpec = tween(200)) }
     ) {
         composable(Screen.Login.route)    { LoginScreen(navController) }
         composable(Screen.Register.route) { RegisterScreen(navController) }
