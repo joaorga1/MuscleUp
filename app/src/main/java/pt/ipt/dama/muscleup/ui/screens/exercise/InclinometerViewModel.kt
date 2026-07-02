@@ -24,6 +24,9 @@ class InclinometerViewModel(application: Application) : AndroidViewModel(applica
     private val _angleDegrees = MutableStateFlow(0f)
     val angleDegrees: StateFlow<Float> = _angleDegrees.asStateFlow()
 
+    private var lastUpdateAt = 0L
+    private val updateIntervalMillis = 100L
+
     fun start() {
         accelerometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
     }
@@ -31,6 +34,10 @@ class InclinometerViewModel(application: Application) : AndroidViewModel(applica
     fun stop() = sensorManager.unregisterListener(this)
 
     override fun onSensorChanged(event: SensorEvent) {
+        val now = System.currentTimeMillis()
+        if (now - lastUpdateAt < updateIntervalMillis) return
+        lastUpdateAt = now
+
         val x = event.values[0]
         val y = event.values[1]
         val z = event.values[2]

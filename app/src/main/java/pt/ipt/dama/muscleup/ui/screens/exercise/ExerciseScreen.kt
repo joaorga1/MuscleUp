@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -39,9 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
@@ -50,7 +50,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -76,6 +75,14 @@ import pt.ipt.dama.muscleup.model.SessionExerciseSet
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
+
+/** Tolerância (em graus) para considerar o ângulo atual "correto" face ao valor guardado. */
+private const val ANGLE_TOLERANCE_DEGREES = 2f
+
+/** Converte texto para ângulo aceitando tanto "," como "." como separador decimal (PT usa vírgula). */
+private fun parseAngle(text: String): Float? = text.trim().replace(',', '.').toFloatOrNull()
+
 
 @Composable
 fun ExerciseScreen(
@@ -89,7 +96,6 @@ fun ExerciseScreen(
     val historySessions by viewModel.historySessions.collectAsState()
     val personalRecord by viewModel.personalRecord.collectAsState()
     val photos by viewModel.photos.collectAsState()
-    var selectedTabIndex by rememberSaveable(exercise?.id) { mutableIntStateOf(0) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
@@ -136,14 +142,6 @@ fun ExerciseScreen(
             viewModel.addPhoto(uri.toString())
         }
     }
-
-    val tabs = listOf(
-        "Pré-definição",
-        "Últimas Execuções",
-        "PR",
-        "Registo",
-        "Config. Máquina"
-    )
 
     if (showPhotoDialog) {
         AlertDialog(
@@ -199,6 +197,7 @@ fun ExerciseScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
             ) {
                 ExercisePhotoGallery(
                     photos = photos,
@@ -207,79 +206,290 @@ fun ExerciseScreen(
                 )
                 HorizontalDivider()
 
-                // Tab Row
-                PrimaryTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    tabs.forEachIndexed { index, tabName ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(tabName) }
-                        )
-                    }
-                }
-
-                // Tab Content
-                Box(
+                // Ecrã único, ordenado pelo fluxo real de uso no ginásio:
+                // 1) configurar a máquina, 2) decidir carga/reps, 3) registar a série.
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(16.dp),
-                    contentAlignment = Alignment.TopCenter
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    when (selectedTabIndex) {
-                        0 -> ExercisePreDefinitionTab(
-                            exercise = currentExercise,
-                            onAddSet = { reps, weightKg, durationSeconds ->
-                                viewModel.addPredefinedSet(reps, weightKg, durationSeconds)
-                            },
-                            onRemoveSet = { setId -> viewModel.removePredefinedSet(setId) }
-                        )
-                        1 -> ExerciseHistoryTab(
-                            exercise = currentExercise,
-                            sessions = historySessions
-                        )
-                        2 -> ExercisePersonalRecordTab(
-                            exercise = currentExercise,
-                            personalRecord = personalRecord
-                        )
-                        3 -> ExerciseRecordTab(
-                            exercise = currentExercise,
-                            currentSessionSets = currentSessionSets,
-                            onAddSet = { reps, weightKg, durationSeconds ->
-                                viewModel.addRecordedSet(reps, weightKg, durationSeconds)
-                            },
-                            onRemoveSet = { setId -> viewModel.removeRecordedSet(setId) },
-                            onFinalize = { viewModel.finalizeSession() },
-                            onClear = { viewModel.clearSession() }
-                        )
-                        4 -> ExerciseMachineConfigTab(
-                            exercise = currentExercise,
-                            onAddConfig = { name, description, angle ->
-                                viewModel.addMachineConfig(name, description, angle)
-                            },
-                            onRemoveConfig = { configId -> viewModel.removeMachineConfig(configId) }
-                        )
-                    }
+                    MachineConfigSection(
+                        exercise = currentExercise,
+                        onAddConfig = { name, description, angle ->
+                            viewModel.addMachineConfig(name, description, angle)
+                        },
+                        onRemoveConfig = { configId -> viewModel.removeMachineConfig(configId) }
+                    )
+
+                    TargetSummarySection(
+                        exercise = currentExercise,
+                        historySessions = historySessions,
+                        personalRecord = personalRecord,
+                        onAddPredefinedSet = { reps, weightKg, durationSeconds ->
+                            viewModel.addPredefinedSet(reps, weightKg, durationSeconds)
+                        },
+                        onRemovePredefinedSet = { setId -> viewModel.removePredefinedSet(setId) }
+                    )
+
+                    RegisterSetSection(
+                        currentSessionSets = currentSessionSets,
+                        onAddSet = { reps, weightKg, durationSeconds ->
+                            viewModel.addRecordedSet(reps, weightKg, durationSeconds)
+                        },
+                        onRemoveSet = { setId -> viewModel.removeRecordedSet(setId) },
+                        onFinalize = { viewModel.finalizeSession() },
+                        onClear = { viewModel.clearSession() }
+                    )
                 }
             }
         }
     }
 }
 
+/** Card com título usado para cada secção do ecrã de exercício. */
 @Composable
-fun ExercisePreDefinitionTab(
+fun SectionCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            content()
+        }
+    }
+}
+
+/**
+ * Configuração da máquina (assento, encosto, ângulo, etc.). É a primeira secção
+ * porque é a primeira coisa que se verifica fisicamente ao sentar na máquina.
+ */
+@Composable
+fun MachineConfigSection(
     exercise: Exercise,
-    onAddSet: (reps: Int, weightKg: Float?, durationSeconds: Int?) -> Unit,
-    onRemoveSet: (setId: String) -> Unit
+    onAddConfig: (name: String, description: String, angleDegrees: Float?) -> Unit,
+    onRemoveConfig: (configId: String) -> Unit
+) {
+    var isEditing by rememberSaveable(exercise.id) { mutableStateOf(false) }
+    var nameInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+    var descriptionInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+    var angleInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+    var checkingConfigId by rememberSaveable(exercise.id) { mutableStateOf<String?>(null) }
+
+    val angleText = angleInput.trim()
+    val angleValue = if (angleText.isBlank()) null else parseAngle(angleText)
+    val hasInvalidAngle = angleText.isNotBlank() && angleValue == null
+    val hasDescriptionOrAngle = descriptionInput.trim().isNotBlank() || angleValue != null
+    val isFormValid = nameInput.trim().isNotBlank() && hasDescriptionOrAngle && !hasInvalidAngle
+
+    SectionCard(title = "Configuração da Máquina") {
+        if (exercise.machineConfigs.isEmpty()) {
+            Text("Sem configurações definidas.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            exercise.machineConfigs.forEach { config ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(config.name, fontWeight = FontWeight.SemiBold)
+                        if (config.description.isNotBlank()) {
+                            Text(config.description, style = MaterialTheme.typography.bodySmall)
+                        }
+                        config.angleDegrees?.let { angle ->
+                            Text(
+                                text = "Ângulo: ${"%.1f".format(angle)}°",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    if (config.angleDegrees != null) {
+                        TextButton(onClick = { checkingConfigId = config.id }) { Text("Verificar") }
+                    }
+                    if (isEditing) {
+                        TextButton(onClick = { onRemoveConfig(config.id) }) { Text("Remover") }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        if (!isEditing) {
+            TextButton(onClick = { isEditing = true }) {
+                Text("Editar configurações")
+            }
+        } else {
+            OutlinedTextField(
+                value = nameInput,
+                onValueChange = { nameInput = it },
+                label = { Text("Nome") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = descriptionInput,
+                onValueChange = { descriptionInput = it },
+                label = { Text("Descrição (opcional)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AngleInputField(
+                value = angleInput,
+                onValueChange = { angleInput = it },
+                isError = hasInvalidAngle
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        onAddConfig(nameInput.trim(), descriptionInput.trim(), angleValue)
+                        nameInput = ""
+                        descriptionInput = ""
+                        angleInput = ""
+                    },
+                    enabled = isFormValid,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Adicionar")
+                }
+                TextButton(
+                    onClick = {
+                        nameInput = ""
+                        descriptionInput = ""
+                        angleInput = ""
+                        isEditing = false
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Concluir edição")
+                }
+            }
+        }
+    }
+
+    val configBeingChecked = exercise.machineConfigs.find { it.id == checkingConfigId }
+    val targetAngle = configBeingChecked?.angleDegrees
+    if (configBeingChecked != null && targetAngle != null) {
+        AngleCheckDialog(
+            configName = configBeingChecked.name,
+            targetAngle = targetAngle,
+            onDismiss = { checkingConfigId = null }
+        )
+    }
+}
+
+/**
+ * Diálogo que compara, em tempo real, o ângulo lido pelo acelerómetro com o
+ * ângulo guardado numa configuração de máquina — para não teres de decorar
+ * nem adivinhar o valor sempre que te sentas.
+ */
+@Composable
+fun AngleCheckDialog(
+    configName: String,
+    targetAngle: Float,
+    onDismiss: () -> Unit
+) {
+    val inclinometerViewModel: InclinometerViewModel = viewModel()
+    val liveAngle by inclinometerViewModel.angleDegrees.collectAsState()
+
+    DisposableEffect(Unit) {
+        inclinometerViewModel.start()
+        onDispose { inclinometerViewModel.stop() }
+    }
+
+    val diff = liveAngle - targetAngle
+    val withinTolerance = abs(diff) <= ANGLE_TOLERANCE_DEGREES
+    val successColor = Color(0xFF4CAF50)
+    val angleColor = if (withinTolerance) successColor else MaterialTheme.colorScheme.primary
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Verificar ângulo", textAlign = TextAlign.Center)
+                Text(
+                    text = configName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        text = {
+            if (!inclinometerViewModel.isSensorAvailable) {
+                Text("Sensor de inclinação não disponível neste dispositivo.")
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Alvo: ${"%.1f".format(targetAngle)}°",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${"%.1f".format(liveAngle)}°",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = angleColor
+                    )
+                    if (!withinTolerance) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val direction = if (diff > 0) "Baixa" else "Sobe"
+                        Text(
+                            text = "$direction ${"%.1f".format(abs(diff))}°",
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fechar") }
+        }
+    )
+}
+
+/**
+ * Objetivo desta série: junta a meta pré-definida, a última execução e o
+ * recorde pessoal — a decisão de "aumento ou mantenho a carga" é uma decisão
+ * só, por isso a informação está toda junta em vez de espalhada por 3 tabs.
+ */
+@Composable
+fun TargetSummarySection(
+    exercise: Exercise,
+    historySessions: List<ExerciseHistorySession>,
+    personalRecord: ExercisePersonalRecord,
+    onAddPredefinedSet: (reps: Int, weightKg: Float?, durationSeconds: Int?) -> Unit,
+    onRemovePredefinedSet: (setId: String) -> Unit
 ) {
     var isEditing by rememberSaveable(exercise.id) { mutableStateOf(exercise.sets.isEmpty()) }
     var repsInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var weightInput by rememberSaveable(exercise.id) { mutableStateOf("") }
     var timeInput by rememberSaveable(exercise.id) { mutableStateOf("") }
 
-    val predefinedSets = exercise.sets
     val repsText = repsInput.trim()
     val reps = if (repsText.isBlank()) 1 else repsText.toIntOrNull() ?: -1
     val weightText = weightInput.trim()
@@ -291,64 +501,122 @@ fun ExercisePreDefinitionTab(
     val hasNoTarget = weightKg == null && durationSeconds == null
     val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime && !hasNoTarget
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text("Pré-definição — ${exercise.name}")
+    val formatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    val lastSession = historySessions.firstOrNull()
+
+    SectionCard(title = "Objetivo desta série") {
+        Text("Meta", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(4.dp))
+        if (exercise.sets.isEmpty()) {
+            Text("Sem meta definida.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            exercise.sets.forEachIndexed { index, set ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = buildString {
+                            append("Série ${index + 1}: ${set.reps} reps")
+                            if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
+                            if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (isEditing) {
+                        TextButton(onClick = { onRemovePredefinedSet(set.id) }) { Text("Remover") }
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text("Última vez", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(4.dp))
+        if (lastSession == null) {
+            Text("Sem sessões anteriores.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            val label = lastSession.finishedAt?.let { formatter.format(Date(it)) } ?: "-"
+            Text("Sessão de $label", style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(4.dp))
+            lastSession.sets.sortedBy { it.setOrder }.forEach { set ->
+                Text(
+                    text = buildString {
+                        append("Série ${set.setOrder}: ${set.reps} reps")
+                        if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
+                        if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text("PR (Recorde Pessoal)", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = personalRecord.maxWeightKg?.let { weight ->
+                val repsLabel = personalRecord.maxWeightReps?.let { " x ${it} reps" }.orEmpty()
+                "Maior peso: ${weight}kg${repsLabel}"
+            } ?: "Maior peso: sem registos",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = personalRecord.maxDurationSeconds?.let { "Maior tempo: ${it}s" } ?: "Maior tempo: sem registos",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         if (!isEditing) {
-            Button(
-                onClick = { isEditing = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Editar pré-definição")
+            TextButton(onClick = { isEditing = true }) {
+                Text("Editar meta")
             }
         } else {
+            Text(
+                text = if (exercise.sets.isEmpty()) "Configurar pré-definição" else "Editar pré-definição",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = repsInput,
-                onValueChange = {
-                    repsInput = it
-                },
+                onValueChange = { repsInput = it },
                 label = { Text("Repetições") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
-
             Spacer(modifier = Modifier.height(8.dp))
-
             OutlinedTextField(
                 value = weightInput,
-                onValueChange = {
-                    weightInput = it
-                },
+                onValueChange = { weightInput = it },
                 label = { Text("Peso (kg)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
-
             Spacer(modifier = Modifier.height(8.dp))
-
             OutlinedTextField(
                 value = timeInput,
-                onValueChange = {
-                    timeInput = it
-                },
+                onValueChange = { timeInput = it },
                 label = { Text("Tempo (s)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
-
             Spacer(modifier = Modifier.height(12.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
                     onClick = {
-                        onAddSet(reps, weightKg, durationSeconds)
+                        onAddPredefinedSet(reps, weightKg, durationSeconds)
                         repsInput = ""
                         weightInput = ""
                         timeInput = ""
@@ -358,7 +626,6 @@ fun ExercisePreDefinitionTab(
                 ) {
                     Text("Adicionar série")
                 }
-
                 TextButton(
                     onClick = {
                         repsInput = ""
@@ -372,127 +639,21 @@ fun ExercisePreDefinitionTab(
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Séries")
-        Spacer(modifier = Modifier.height(8.dp))
-
-        predefinedSets.forEachIndexed { index, set ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = buildString {
-                        append("Série ${index + 1}: ${set.reps} reps")
-                        if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
-                        if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
-                    }
-                )
-
-                if (isEditing) {
-                    TextButton(onClick = { onRemoveSet(set.id) }) {
-                        Text("Remover")
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-        }
     }
 }
 
+/** Registo em tempo real das séries desta sessão — a ação principal, sempre visível. */
 @Composable
-fun ExerciseHistoryTab(
-    exercise: Exercise,
-    sessions: List<ExerciseHistorySession>
-) {
-    val formatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text("Últimas Execuções — ${exercise.name}")
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (sessions.isEmpty()) {
-            Text("Sem sessões finalizadas para este exercício.")
-            return@Column
-        }
-
-        sessions.forEach { session ->
-            val finishedLabel = session.finishedAt?.let { formatter.format(Date(it)) } ?: "-"
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors()
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("Sessão de $finishedLabel")
-                    Text("${session.sets.size} séries")
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Keep historical sets in their natural order (1 -> N).
-                    val orderedSets = session.sets.sortedBy { it.setOrder }
-                    orderedSets.forEachIndexed { setIndex, set ->
-                        Text(
-                            text = buildString {
-                                append("Série ${set.setOrder}: ${set.reps} reps")
-                                if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
-                                if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
-                            }
-                        )
-
-                        if (setIndex < orderedSets.lastIndex) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            HorizontalDivider()
-                            Spacer(modifier = Modifier.height(6.dp))
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-    }
-}
-
-@Composable
-fun ExercisePersonalRecordTab(
-    exercise: Exercise,
-    personalRecord: ExercisePersonalRecord
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text("PR (Recorde Pessoal) — ${exercise.name}")
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = personalRecord.maxWeightKg?.let { weight ->
-                val repsLabel = personalRecord.maxWeightReps?.let { " x ${it} reps" }.orEmpty()
-                "Maior peso: ${weight}kg${repsLabel}"
-            }
-                ?: "Maior peso: sem registos"
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = personalRecord.maxDurationSeconds?.let { "Maior tempo: ${it}s" }
-                ?: "Maior tempo: sem registos"
-        )
-    }
-}
-
-@Composable
-fun ExerciseRecordTab(
-    exercise: Exercise,
+fun RegisterSetSection(
     currentSessionSets: List<SessionExerciseSet>,
     onAddSet: (reps: Int, weightKg: Float?, durationSeconds: Int?) -> Unit,
     onRemoveSet: (setId: String) -> Unit,
     onFinalize: () -> Unit,
     onClear: () -> Unit
 ) {
-    var repsInput by rememberSaveable(exercise.id) { mutableStateOf("") }
-    var weightInput by rememberSaveable(exercise.id) { mutableStateOf("") }
-    var timeInput by rememberSaveable(exercise.id) { mutableStateOf("") }
+    var repsInput by rememberSaveable { mutableStateOf("") }
+    var weightInput by rememberSaveable { mutableStateOf("") }
+    var timeInput by rememberSaveable { mutableStateOf("") }
 
     val repsText = repsInput.trim()
     val reps = if (repsText.isBlank()) 1 else repsText.toIntOrNull() ?: -1
@@ -505,14 +666,7 @@ fun ExerciseRecordTab(
     val hasNoTarget = weightKg == null && durationSeconds == null
     val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime && !hasNoTarget
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text("Registo — ${exercise.name}")
-        Spacer(modifier = Modifier.height(12.dp))
-
+    SectionCard(title = "Registar Série") {
         OutlinedTextField(
             value = repsInput,
             onValueChange = { repsInput = it },
@@ -604,123 +758,6 @@ fun ExerciseRecordTab(
     }
 }
 
-@Composable
-fun ExerciseMachineConfigTab(
-    exercise: Exercise,
-    onAddConfig: (name: String, description: String, angleDegrees: Float?) -> Unit,
-    onRemoveConfig: (configId: String) -> Unit
-) {
-    var isEditing by rememberSaveable(exercise.id) { mutableStateOf(false) }
-    var nameInput by rememberSaveable(exercise.id) { mutableStateOf("") }
-    var descriptionInput by rememberSaveable(exercise.id) { mutableStateOf("") }
-    var angleInput by rememberSaveable(exercise.id) { mutableStateOf("") }
-
-    val angleText = angleInput.trim()
-    val angleValue = if (angleText.isBlank()) null else angleText.toFloatOrNull()
-    val hasInvalidAngle = angleText.isNotBlank() && angleValue == null
-    val isFormValid = nameInput.trim().isNotBlank() && descriptionInput.trim().isNotBlank() && !hasInvalidAngle
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text("Config. Máquina — ${exercise.name}")
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (!isEditing) {
-            Button(
-                onClick = { isEditing = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Editar configurações")
-            }
-        } else {
-            OutlinedTextField(
-                value = nameInput,
-                onValueChange = { nameInput = it },
-                label = { Text("Nome") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = descriptionInput,
-                onValueChange = { descriptionInput = it },
-                label = { Text("Descrição") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            AngleInputField(
-                value = angleInput,
-                onValueChange = { angleInput = it },
-                isError = hasInvalidAngle
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = {
-                        onAddConfig(nameInput.trim(), descriptionInput.trim(), angleValue)
-                        nameInput = ""
-                        descriptionInput = ""
-                        angleInput = ""
-                    },
-                    enabled = isFormValid,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Adicionar")
-                }
-                TextButton(
-                    onClick = {
-                        nameInput = ""
-                        descriptionInput = ""
-                        angleInput = ""
-                        isEditing = false
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Concluir edição")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (exercise.machineConfigs.isEmpty()) {
-            Text("Sem configurações definidas.")
-        } else {
-            exercise.machineConfigs.forEach { config ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(config.name)
-                        Text(config.description)
-                        config.angleDegrees?.let { angle ->
-                            Text(
-                                text = "Ângulo: ${"%.1f".format(angle)}°",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                    if (isEditing) {
-                        TextButton(onClick = { onRemoveConfig(config.id) }) {
-                            Text("Remover")
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-}
 
 /**
  * Campo opcional para o ângulo da máquina. Pode ser preenchido manualmente
@@ -748,11 +785,11 @@ fun AngleInputField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         isError = isError,
         supportingText = if (isError) {
-            { Text("Ângulo inválido") }
+            { Text("Ângulo inválido. Ex: 30 ou 30,5") }
         } else null,
         trailingIcon = if (inclinometerViewModel.isSensorAvailable) {
             {
-                TextButton(onClick = { onValueChange("%.1f".format(liveAngle)) }) {
+                TextButton(onClick = { onValueChange("%.1f".format(Locale.US, liveAngle)) }) {
                     Text("Usar sensor")
                 }
             }
