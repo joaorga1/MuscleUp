@@ -17,6 +17,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import pt.ipt.dama.muscleup.data.remote.AuthStateManager
+import pt.ipt.dama.muscleup.data.session.UserSession
 import pt.ipt.dama.muscleup.ui.screens.auth.LoginScreen
 import pt.ipt.dama.muscleup.ui.screens.auth.RegisterScreen
 import pt.ipt.dama.muscleup.ui.screens.exercise.ExerciseScreen
@@ -62,6 +64,20 @@ fun AppNavigation(
         homeViewModel.logout()
         navController.navigate(Screen.Login.route) {
             popUpTo(0) { inclusive = true }
+        }
+    }
+
+    // Observa eventos de "sessão expirada" vindos de qualquer camada da app
+    // (ex: refreshToken rejeitado pelo servidor durante um pedido HTTP em background).
+    // Guarda: só actua se ainda houver sessão activa, para não entrar em loop.
+    LaunchedEffect(Unit) {
+        AuthStateManager.forceLogout.collect {
+            if (UserSession.currentUserEmail.isNotBlank()) {
+                homeViewModel.logout()
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
         }
     }
 

@@ -49,6 +49,7 @@ data class ExerciseHistorySession(
 data class ExercisePersonalRecord(
     val maxWeightKg: Float? = null,
     val maxWeightReps: Int? = null,
+    val maxReps: Int? = null,           // para exercícios só de peso corporal
     val maxDurationSeconds: Int? = null
 )
 
@@ -91,6 +92,11 @@ class ExerciseViewModel(
         .map { it?.profilePhotoUri?.ifBlank { null } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** workoutId do exercício — necessário para navegar para o ecrã de edição. */
+    val workoutId: StateFlow<String> = exerciseDao.getExerciseById(exerciseId)
+        .map { it?.workoutId ?: "" }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+
     // Carrega exercício, séries pré-definidas e configs da máquina de forma reativa
     val exercise: StateFlow<Exercise?> = combine(
         exerciseDao.getExerciseById(exerciseId),
@@ -132,9 +138,11 @@ class ExerciseViewModel(
                 .filter { it.weightKg > 0f }
                 .maxWithOrNull(compareBy<SessionExerciseSet> { it.weightKg }.thenBy { it.reps })
             val maxDuration = allSets.map { it.durationSeconds }.filter { it > 0 }.maxOrNull()
+            val maxReps = allSets.map { it.reps }.filter { it > 0 }.maxOrNull()
             ExercisePersonalRecord(
                 maxWeightKg = heaviestSet?.weightKg,
                 maxWeightReps = heaviestSet?.reps,
+                maxReps = maxReps,
                 maxDurationSeconds = maxDuration
             )
         }
@@ -246,6 +254,16 @@ class ExerciseViewModel(
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
+                // Verifica o tamanho antes de guardar — a API não aceita ficheiros > 10 MB
+                val fileSizeBytes = app.contentResolver
+                    .openFileDescriptor(uri.toUri(), "r")?.use { it.statSize } ?: 0L
+                val maxBytes = 10L * 1024 * 1024 // 10 MB
+                if (fileSizeBytes > maxBytes) {
+                    val sizeMb = "%.1f".format(fileSizeBytes / (1024.0 * 1024.0))
+                    _uiEvent.emit("Foto demasiado grande (${sizeMb} MB). Máximo permitido: 10 MB.")
+                    return@launch
+                }
+
                 val entity = ExercisePhotoEntity(
                     id = UUID.randomUUID().toString(),
                     exerciseId = exerciseId,

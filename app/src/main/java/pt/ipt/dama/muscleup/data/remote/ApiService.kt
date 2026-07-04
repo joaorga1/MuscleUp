@@ -45,6 +45,10 @@ interface ApiService {
     // Health
     // ---------------------------------------------------------------------
 
+    /** Verifica se a API está acessível. Não requer autenticação. */
+    @GET("api/health")
+    suspend fun checkHealth(): Response<Unit>
+
     // ---------------------------------------------------------------------
     // Auth / Users
     // ---------------------------------------------------------------------

@@ -1,8 +1,12 @@
 ﻿package pt.ipt.dama.muscleup.data.remote
+
 import android.content.Context
 import androidx.core.content.edit
 import com.auth0.android.jwt.JWT
 import com.google.gson.Gson
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import okhttp3.Authenticator
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -12,6 +16,25 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.Route
 import pt.ipt.dama.muscleup.data.remote.dto.RefreshResponse
+import java.util.concurrent.TimeUnit
+
+// ── Auth State ────────────────────────────────────────────────────────────────────────────────────
+/**
+ * Singleton que emite um evento de "força logout" quando o refreshToken expirou
+ * ou foi rejeitado pelo servidor — sem precisar de uma referência direta ao NavController.
+ *
+ * Qualquer camada da app pode chamar [triggerForceLogout].
+ * A UI (AppNavigation) observa [forceLogout] e navega para o ecrã de login.
+ */
+object AuthStateManager {
+    private val _forceLogout = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val forceLogout: SharedFlow<Unit> = _forceLogout.asSharedFlow()
+
+    fun triggerForceLogout() {
+        _forceLogout.tryEmit(Unit)
+    }
+}
+
 // ── Constantes de SharedPreferences ──────────────────────────────────────────────────────────────
 private const val PREFS_NAME        = "muscleup_tokens"
 private const val KEY_ACCESS_TOKEN  = "access_token"
@@ -48,9 +71,27 @@ class TokenManager(context: Context) {
  */
 class TokenRefresher(private val baseUrl: String) {
     private val gson          = Gson()
-    private val refreshClient = OkHttpClient()
-    /** Renova o accessToken. Devolve o novo token ou `null` se o refreshToken também falhar. */
+    private val refreshClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .writeTimeout(10, TimeUnit.SECONDS)
+        .build()
+
+    /**
+     * Renova o accessToken de forma thread-safe:
+     * - Se dois pedidos chegam ao mesmo tempo com o token expirado, apenas UM faz o
+     *   refresh; o segundo reutiliza o token já renovado (double-check no início).
+     * - Só limpa a sessão e força logout se o servidor rejeitar explicitamente o
+     *   refreshToken (401 / 403). Erros de rede não apagam a sessão.
+     */
+    @Synchronized
     fun refresh(tokenManager: TokenManager): String? {
+        // Double-check: outra thread pode já ter renovado enquanto esperávamos o lock.
+        if (!tokenManager.isAccessTokenExpired()) {
+            return tokenManager.getAccessToken()
+        }
+        // Sem refreshToken = sessão já foi limpa (logout manual ou 1.ª execução).
+        // Não disparar forceLogout aqui — não há sessão ativa para expirar.
         val refreshToken = tokenManager.getRefreshToken() ?: return null
         return try {
             val body = gson.toJson(mapOf("refreshToken" to refreshToken))
@@ -60,12 +101,23 @@ class TokenRefresher(private val baseUrl: String) {
                 .post(body)
                 .build()
             refreshClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) { tokenManager.clear(); return null }
+                if (!response.isSuccessful) {
+                    // ÚNICO sítio onde se dispara forceLogout:
+                    // o servidor recusou explicitamente o refreshToken (sessão verdadeiramente expirada).
+                    if (response.code == 401 || response.code == 403) {
+                        tokenManager.clear()
+                        AuthStateManager.triggerForceLogout()
+                    }
+                    return null
+                }
                 val newToken = gson.fromJson(response.body.string(), RefreshResponse::class.java).accessToken
                 tokenManager.updateAccessToken(newToken)
                 newToken
             }
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            // Erro de rede (sem ligação, timeout, etc.) — não apaga a sessão.
+            null
+        }
     }
 }
 /**
@@ -94,14 +146,15 @@ class AuthInterceptor(
 /**
  * Authenticator reativo: fallback chamado pelo OkHttp quando um pedido recebe 401.
  * Renova o accessToken com [TokenRefresher] e repete o pedido original automaticamente.
+ * Não dispara forceLogout aqui — o [TokenRefresher] é o único responsável por isso.
  */
 class TokenAuthenticator(
     private val tokenManager: TokenManager,
     private val tokenRefresher: TokenRefresher
 ) : Authenticator {
     override fun authenticate(route: Route?, response: Response): Request? {
-        if (responseCount(response) >= 2) return null       // evita loop infinito
-        if (tokenManager.getRefreshToken() == null) return null
+        if (responseCount(response) >= 2) return null           // evita loop infinito
+        if (tokenManager.getRefreshToken() == null) return null // sessão já limpa, não fazer nada
         val newToken = tokenRefresher.refresh(tokenManager) ?: return null
         return response.request.newBuilder()
             .header("Authorization", "Bearer $newToken")

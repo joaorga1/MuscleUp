@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -46,6 +47,7 @@ import androidx.navigation.NavController
 import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.model.Exercise
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
+import pt.ipt.dama.muscleup.ui.components.EmptyState
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,6 +103,28 @@ fun WorkoutScreen(
             )
         } else {
             val currentWorkout = workout!!
+            if (currentWorkout.exercises.isEmpty()) {
+                Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                    // Show workout info at the top
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        Text(
+                            text = stringResource(currentWorkout.type.labelRes),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = currentWorkout.description,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                        )
+                    }
+                    EmptyState(
+                        icon = Icons.AutoMirrored.Filled.List,
+                        title = stringResource(R.string.empty_exercises_title),
+                        subtitle = stringResource(R.string.empty_exercises_subtitle)
+                    )
+                }
+            } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentPadding = PaddingValues(16.dp),
@@ -169,6 +193,7 @@ fun WorkoutScreen(
                     }
                 }
             }
+            } // end else (exercises not empty)
         }
 
         exerciseToDelete?.let { exercise ->

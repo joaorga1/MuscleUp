@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,10 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import pt.ipt.dama.muscleup.R
 import androidx.navigation.NavController
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.model.Workout
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
+import pt.ipt.dama.muscleup.ui.components.EmptyState
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,53 +89,62 @@ fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(workouts, key = { it.id }) { workout ->
-                val dismissState = rememberSwipeToDismissBoxState()
+        if (workouts.isEmpty()) {
+            EmptyState(
+                icon = Icons.Default.Star,
+                title = stringResource(R.string.empty_workouts_title),
+                subtitle = stringResource(R.string.empty_workouts_subtitle),
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(workouts, key = { it.id }) { workout ->
+                    val dismissState = rememberSwipeToDismissBoxState()
 
-                LaunchedEffect(dismissState.currentValue) {
-                    when (dismissState.currentValue) {
-                        SwipeToDismissBoxValue.EndToStart -> {
-                            workoutToDelete = workout
-                            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-                        }
-                        SwipeToDismissBoxValue.StartToEnd -> {
-                            navController.navigate(Screen.WorkoutForm.edit(workout.id))
-                            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-                        }
-                        else -> {}
-                    }
-                }
-
-                SwipeToDismissBox(
-                    state = dismissState,
-                    enableDismissFromStartToEnd = true,
-                    backgroundContent = {
-                        val isEditSwipe = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
-                        val bgColor = if (isEditSwipe) MaterialTheme.colorScheme.primary else Color.Red
-                        val icon = if (isEditSwipe) Icons.Default.Edit else Icons.Default.Delete
-                        val alignment = if (isEditSwipe) Alignment.CenterStart else Alignment.CenterEnd
-                        val padding = if (isEditSwipe) Modifier.padding(start = 20.dp) else Modifier.padding(end = 20.dp)
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(bgColor, shape = MaterialTheme.shapes.medium)
-                                .then(padding),
-                            contentAlignment = alignment
-                        ) {
-                            Icon(imageVector = icon, contentDescription = null, tint = Color.White)
+                    LaunchedEffect(dismissState.currentValue) {
+                        when (dismissState.currentValue) {
+                            SwipeToDismissBoxValue.EndToStart -> {
+                                workoutToDelete = workout
+                                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                            }
+                            SwipeToDismissBoxValue.StartToEnd -> {
+                                navController.navigate(Screen.WorkoutForm.edit(workout.id))
+                                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                            }
+                            else -> {}
                         }
                     }
-                ) {
-                    WorkoutCard(
-                        workout = workout,
-                        onClick = { navController.navigate(Screen.Workout.go(workout.id)) }
-                    )
+
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = true,
+                        backgroundContent = {
+                            val isEditSwipe = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+                            val bgColor = if (isEditSwipe) MaterialTheme.colorScheme.primary else Color.Red
+                            val icon = if (isEditSwipe) Icons.Default.Edit else Icons.Default.Delete
+                            val alignment = if (isEditSwipe) Alignment.CenterStart else Alignment.CenterEnd
+                            val padding = if (isEditSwipe) Modifier.padding(start = 20.dp) else Modifier.padding(end = 20.dp)
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(bgColor, shape = MaterialTheme.shapes.medium)
+                                    .then(padding),
+                                contentAlignment = alignment
+                            ) {
+                                Icon(imageVector = icon, contentDescription = null, tint = Color.White)
+                            }
+                        }
+                    ) {
+                        WorkoutCard(
+                            workout = workout,
+                            onClick = { navController.navigate(Screen.Workout.go(workout.id)) }
+                        )
+                    }
                 }
             }
         }

@@ -25,6 +25,12 @@
     <string name="exercise_form_field_target_muscle">Músculo alvo</string>
     <string name="exercise_form_save">Guardar</string>
 
+    <!-- Empty States -->
+    <string name="empty_workouts_title">Ainda não tens treinos</string>
+    <string name="empty_workouts_subtitle">Começa por criar o teu primeiro treino.\nToca no botão + para dares o primeiro passo!</string>
+    <string name="empty_exercises_title">Ainda não tens exercícios</string>
+    <string name="empty_exercises_subtitle">Adiciona exercícios ao teu treino.\nToca no botão + para começares.</string>
+
     <!-- Common -->
     <string name="content_desc_add">Adicionar</string>
     <string name="content_desc_edit">Editar</string>

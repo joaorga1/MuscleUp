@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,10 +33,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,6 +68,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.navigation.NavController
@@ -92,6 +98,7 @@ fun ExerciseScreen(
     onLogout: () -> Unit = {}
 ) {
     val exercise by viewModel.exercise.collectAsState()
+    val workoutId by viewModel.workoutId.collectAsState()
     val profilePhotoUri by viewModel.profilePhotoUri.collectAsState()
     val currentSessionSets by viewModel.currentSessionSets.collectAsState()
     val historySessions by viewModel.historySessions.collectAsState()
@@ -106,6 +113,7 @@ fun ExerciseScreen(
     val context = LocalContext.current
     var showPhotoDialog by remember { mutableStateOf(false) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
@@ -144,6 +152,7 @@ fun ExerciseScreen(
         }
     }
 
+    // Diálogo de selecção de origem da foto
     if (showPhotoDialog) {
         AlertDialog(
             onDismissRequest = { showPhotoDialog = false },
@@ -172,6 +181,15 @@ fun ExerciseScreen(
         )
     }
 
+    // Visualizador de foto em ecrã completo com swipe entre fotos
+    selectedPhotoIndex?.let { index ->
+        PhotoViewerDialog(
+            photos = photos,
+            initialIndex = index,
+            onDismiss = { selectedPhotoIndex = null }
+        )
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
@@ -184,6 +202,17 @@ fun ExerciseScreen(
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onLogoutClick = onLogout
             )
+        },
+        floatingActionButton = {
+            if (exercise != null && workoutId.isNotBlank()) {
+                FloatingActionButton(
+                    onClick = {
+                        navController.navigate(Screen.ExerciseForm.edit(workoutId, exercise!!.id))
+                    }
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar exercício")
+                }
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
@@ -204,7 +233,8 @@ fun ExerciseScreen(
                 ExercisePhotoGallery(
                     photos = photos,
                     onAddClick = { showPhotoDialog = true },
-                    onRemove = { photoId -> viewModel.removePhoto(photoId) }
+                    onRemove = { photoId -> viewModel.removePhoto(photoId) },
+                    onPhotoClick = { index -> selectedPhotoIndex = index }
                 )
                 HorizontalDivider()
 
@@ -498,10 +528,11 @@ fun TargetSummarySection(
     val timeText = timeInput.trim()
     val weightKg = if (weightText.isBlank()) null else weightText.toFloatOrNull()
     val durationSeconds = if (timeText.isBlank()) null else timeText.toIntOrNull()
-    val hasInvalidWeight = weightText.isNotBlank() && (weightKg == null || weightKg <= 0f)
+    // Peso inválido = preenchido mas não é número válido (>= 0 é aceite; bodyweight = campo vazio)
+    val hasInvalidWeight = weightText.isNotBlank() && (weightKg == null || weightKg < 0f)
     val hasInvalidTime = timeText.isNotBlank() && (durationSeconds == null || durationSeconds <= 0)
-    val hasNoTarget = weightKg == null && durationSeconds == null
-    val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime && !hasNoTarget
+    // Reps apenas (ex: elevações em barra) é válido — não é obrigatório peso ou duração
+    val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime
 
     val formatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val lastSession = historySessions.firstOrNull()
@@ -563,17 +594,34 @@ fun TargetSummarySection(
 
         Text("PR (Recorde Pessoal)", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = personalRecord.maxWeightKg?.let { weight ->
-                val repsLabel = personalRecord.maxWeightReps?.let { " x ${it} reps" }.orEmpty()
-                "Maior peso: ${weight}kg${repsLabel}"
-            } ?: "Maior peso: sem registos",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Text(
-            text = personalRecord.maxDurationSeconds?.let { "Maior tempo: ${it}s" } ?: "Maior tempo: sem registos",
-            style = MaterialTheme.typography.bodyMedium
-        )
+
+        val hasAnyRecord = personalRecord.maxWeightKg != null ||
+                personalRecord.maxReps != null ||
+                personalRecord.maxDurationSeconds != null
+
+        if (!hasAnyRecord) {
+            Text(
+                text = "Adiciona a tua primeira série para veres os teus recordes aqui.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            // Maior peso (com ou sem reps associadas)
+            personalRecord.maxWeightKg?.let { weight ->
+                val repsLabel = personalRecord.maxWeightReps?.let { " × $it reps" }.orEmpty()
+                Text("Maior peso: ${weight}kg$repsLabel", style = MaterialTheme.typography.bodyMedium)
+            }
+            // Mais reps — só mostra se não há PR de peso (exercício de peso corporal puro)
+            if (personalRecord.maxWeightKg == null) {
+                personalRecord.maxReps?.let { maxReps ->
+                    Text("Mais reps: $maxReps reps", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            // Maior duração (pranchas, cardio, etc.)
+            personalRecord.maxDurationSeconds?.let { duration ->
+                Text("Maior tempo: ${duration}s", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -663,10 +711,10 @@ fun RegisterSetSection(
     val timeText = timeInput.trim()
     val weightKg = if (weightText.isBlank()) null else weightText.toFloatOrNull()
     val durationSeconds = if (timeText.isBlank()) null else timeText.toIntOrNull()
-    val hasInvalidWeight = weightText.isNotBlank() && (weightKg == null || weightKg <= 0f)
+    val hasInvalidWeight = weightText.isNotBlank() && (weightKg == null || weightKg < 0f)
     val hasInvalidTime = timeText.isNotBlank() && (durationSeconds == null || durationSeconds <= 0)
-    val hasNoTarget = weightKg == null && durationSeconds == null
-    val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime && !hasNoTarget
+    // Reps apenas (ex: elevações em barra) é válido — peso e duração são opcionais
+    val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime
 
     SectionCard(title = "Registar Série") {
         OutlinedTextField(
@@ -805,7 +853,8 @@ fun AngleInputField(
 fun ExercisePhotoGallery(
     photos: List<ExercisePhoto>,
     onAddClick: () -> Unit,
-    onRemove: (photoId: String) -> Unit
+    onRemove: (photoId: String) -> Unit,
+    onPhotoClick: (index: Int) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -837,7 +886,7 @@ fun ExercisePhotoGallery(
                 }
             }
 
-            items(photos, key = { it.id }) { photo ->
+            itemsIndexed(photos, key = { _, photo -> photo.id }) { index, photo ->
                 Box(modifier = Modifier.size(84.dp)) {
                     AsyncImage(
                         model = photo.uri.toUri(),
@@ -846,6 +895,7 @@ fun ExercisePhotoGallery(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(12.dp))
+                            .clickable { onPhotoClick(index) }
                     )
                     IconButton(
                         onClick = { onRemove(photo.id) },
@@ -874,6 +924,100 @@ fun ExercisePhotoGallery(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+/**
+ * Galeria de fotos em ecrã completo com swipe horizontal entre imagens.
+ * Mostra um contador (ex: "2 / 5") e bolinhas indicadoras de página.
+ * Toca em qualquer ponto ou no botão X para fechar.
+ */
+@Composable
+fun PhotoViewerDialog(
+    photos: List<ExercisePhoto>,
+    initialIndex: Int,
+    onDismiss: () -> Unit
+) {
+    val pagerState = rememberPagerState(initialPage = initialIndex.coerceIn(0, (photos.size - 1).coerceAtLeast(0))) { photos.size }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            // Pager principal com swipe horizontal
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                AsyncImage(
+                    model = photos[page].uri.toUri(),
+                    contentDescription = "Foto ${page + 1} de ${photos.size}",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable { onDismiss() }
+                )
+            }
+
+            // Contador "X / N" no canto superior esquerdo
+            if (photos.size > 1) {
+                Text(
+                    text = "${pagerState.currentPage + 1} / ${photos.size}",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+
+            // Botão fechar no canto superior direito
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.55f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Fechar",
+                    tint = Color.White
+                )
+            }
+
+            // Bolinhas indicadoras de página na parte inferior
+            if (photos.size > 1) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 28.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(photos.size) { index ->
+                        val isCurrent = index == pagerState.currentPage
+                        Box(
+                            modifier = Modifier
+                                .size(if (isCurrent) 10.dp else 7.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isCurrent) Color.White else Color.White.copy(alpha = 0.45f)
+                                )
+                        )
+                    }
+                }
+            }
         }
     }
 }

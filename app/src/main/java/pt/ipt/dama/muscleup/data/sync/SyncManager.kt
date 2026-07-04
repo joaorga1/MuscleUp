@@ -26,6 +26,7 @@ import pt.ipt.dama.muscleup.data.remote.dto.ExerciseSetRequest
 import pt.ipt.dama.muscleup.data.remote.dto.MachineConfigRequest
 import pt.ipt.dama.muscleup.data.remote.dto.SessionSetRequest
 import pt.ipt.dama.muscleup.data.remote.dto.WorkoutRequest
+import retrofit2.Response
 import java.io.IOException
 import java.time.Instant
 import java.util.UUID
@@ -38,6 +39,13 @@ private const val TYPE_MACHINE_CONFIG = "MACHINE_CONFIG"
 private const val TYPE_PHOTO = "PHOTO"
 private const val TYPE_SESSION_SET = "SESSION_SET"
 private const val TYPE_SESSION = "SESSION" // ciclo de vida da sessão (FINALIZE / DISCARD)
+
+/**
+ * Exceção lançada quando o servidor recusa permanentemente uma operação (4xx, excluindo 404).
+ * Ao contrário de [IOException], NÃO para a fila — a op é descartada e a fila avança,
+ * porque re-enviar nunca vai resolver um erro permanente do servidor.
+ */
+private class PermanentSyncException(message: String) : Exception(message)
 
 /** Payload serializado (JSON) guardado na fila — estado necessário para reenviar a operação à API. */
 private data class WorkoutSyncPayload(
@@ -299,56 +307,96 @@ class SyncManager(
     // ---------------------------------------------------------------------
 
     /**
-     * Esvazia a fila de pendentes. Devolve `true` se a fila ficou totalmente vazia (sucesso),
-     * ou `false` se parou por falta de rede (permite ao [SyncWorker] pedir retry ao WorkManager
-     * em vez de assumir sucesso silenciosamente).
+     * Esvazia a fila de pendentes. Devolve `true` se a fila ficou totalmente vazia,
+     * ou `false` para sinalizar ao [SyncWorker] que deve pedir retry ao WorkManager.
+     *
+     * ## Garantia de ordem / dependências
+     * A fila é processada por ordem de criação (FIFO). **Qualquer erro transiente pára
+     * imediatamente a fila e devolve `false`**, garantindo que operações dependentes
+     * (ex: CREATE de exercises que precisam do remoteId do workout pai) nunca são
+     * tentadas antes das operações que as precedem. O WorkManager retenta com backoff.
+     *
+     * ## Erros permanentes
+     * Se o servidor recusar permanentemente uma operação (4xx ≠ 404), ela é descartada
+     * via [PermanentSyncException] e a fila avança — re-enviar nunca iria resolver.
+     * O dado local continua a existir no Room.
+     *
+     * ## Sem limite de tentativas
+     * Operações nunca são descartadas por "demasiadas tentativas". Um workout criado
+     * offline ficará na fila até ser sincronizado com sucesso, garantindo que o
+     * estado local nunca fica permanentemente dessincronizado da API por timeout.
      */
     suspend fun syncPending(): Boolean {
+        // Verifica conectividade antes de processar — evita tentar toda a fila quando
+        // o servidor está claramente em baixo.
+        if (!isApiReachable()) {
+            Log.d(TAG, "API inacessível — sync adiada")
+            return false
+        }
+
         val ops = pendingSyncDao.getAll()
+        if (ops.isEmpty()) return true
+
         for (op in ops) {
             try {
                 when (op.entityType) {
-                    TYPE_WORKOUT -> syncWorkoutOp(op)
-                    TYPE_EXERCISE -> syncExerciseOp(op)
-                    TYPE_EXERCISE_SET -> syncExerciseSetOp(op)
+                    TYPE_WORKOUT        -> syncWorkoutOp(op)
+                    TYPE_EXERCISE       -> syncExerciseOp(op)
+                    TYPE_EXERCISE_SET   -> syncExerciseSetOp(op)
                     TYPE_MACHINE_CONFIG -> syncMachineConfigOp(op)
-                    TYPE_PHOTO -> syncPhotoOp(op)
-                    TYPE_SESSION_SET -> syncSessionSetOp(op)
-                    TYPE_SESSION -> syncSessionOp(op)
-                    else -> Log.w(TAG, "Tipo de entidade desconhecido na fila: ${op.entityType}")
+                    TYPE_PHOTO          -> syncPhotoOp(op)
+                    TYPE_SESSION_SET    -> syncSessionSetOp(op)
+                    TYPE_SESSION        -> syncSessionOp(op)
+                    else -> Log.w(TAG, "Tipo desconhecido na fila: ${op.entityType}")
                 }
                 pendingSyncDao.deleteById(op.id)
+
+            } catch (e: PermanentSyncException) {
+                // Servidor recusou permanentemente (4xx) — descarta esta op e avança.
+                // O dado local continua no Room mas não será sincronizado.
+                Log.w(TAG, "Op permanentemente rejeitada, a descartar: ${op.entityType}/${op.operation} — ${e.message}")
+                pendingSyncDao.deleteById(op.id)
+
             } catch (e: IOException) {
-                Log.d(TAG, "Sem rede, sincronização adiada: ${e.message}")
-                return false // sem rede — pára aqui, o WorkManager tenta de novo (backoff)
-            } catch (e: Exception) {
-                Log.e(TAG, "Erro a sincronizar operação ${op.id} (${op.entityType}/${op.operation}): ${e.message}", e)
+                // Erro transiente (rede, 5xx) — pára a fila. WorkManager retenta com backoff.
+                Log.d(TAG, "Erro de rede em ${op.entityType}/${op.operation}: ${e.message}")
                 pendingSyncDao.incrementAttempts(op.id)
+                return false
+
+            } catch (e: Exception) {
+                // Erro de dependência (ex: entidade pai ainda sem remoteId) — pára também
+                // para garantir que a ordem das dependências é sempre respeitada.
+                Log.e(TAG, "Erro em ${op.entityType}/${op.operation} (tentativa ${op.attempts + 1}): ${e.message}")
+                pendingSyncDao.incrementAttempts(op.id)
+                return false
             }
         }
         return true
     }
+
+    /** Verifica se a API está acessível com um pedido leve ao endpoint de health. */
+    private suspend fun isApiReachable(): Boolean = try {
+        apiService.checkHealth().isSuccessful
+    } catch (_: Exception) { false }
 
     private suspend fun syncWorkoutOp(op: PendingSyncEntity) {
         val payload = gson.fromJson(op.payloadJson, WorkoutSyncPayload::class.java)
         when (op.operation) {
             "CREATE" -> {
                 val response = apiService.createWorkout(WorkoutRequest(payload.title, payload.description, payload.type))
-                if (!response.isSuccessful) throw IOException("createWorkout falhou: ${response.code()}")
+                response.throwIfFailed("createWorkout")
                 response.body()?.id?.let { remoteId -> workoutDao.updateRemoteId(op.localId, remoteId) }
             }
             "UPDATE" -> {
                 val remoteId = payload.remoteId ?: workoutDao.getByIdOnce(op.localId)?.remoteId
                 if (remoteId == null) return // ainda não foi criado remotamente; o CREATE pendente trata disto
                 val response = apiService.updateWorkout(remoteId, WorkoutRequest(payload.title, payload.description, payload.type))
-                if (!response.isSuccessful) throw IOException("updateWorkout falhou: ${response.code()}")
+                response.throwIfFailed("updateWorkout")
             }
             "DELETE" -> {
                 val remoteId = payload.remoteId ?: return
                 val response = apiService.deleteWorkout(remoteId)
-                if (!response.isSuccessful && response.code() != 404) {
-                    throw IOException("deleteWorkout falhou: ${response.code()}")
-                }
+                if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("deleteWorkout")
             }
         }
     }
@@ -357,15 +405,13 @@ class SyncManager(
         val payload = gson.fromJson(op.payloadJson, ExerciseSyncPayload::class.java)
         when (op.operation) {
             "CREATE" -> {
-                // O workout pai tem de estar sincronizado primeiro (a fila é processada em ordem
-                // de criação, por isso na prática o CREATE do workout já correu nesta mesma passagem).
                 val remoteWorkoutId = workoutDao.getByIdOnce(payload.workoutId)?.remoteId
                     ?: throw Exception("Workout pai ainda sem remoteId — tenta novamente depois")
                 val response = apiService.createExercise(
                     remoteWorkoutId,
                     ExerciseRequest(payload.name, payload.description, payload.targetMuscle)
                 )
-                if (!response.isSuccessful) throw IOException("createExercise falhou: ${response.code()}")
+                response.throwIfFailed("createExercise")
                 response.body()?.id?.let { remoteId -> exerciseDao.updateRemoteId(op.localId, remoteId) }
             }
             "UPDATE" -> {
@@ -375,14 +421,12 @@ class SyncManager(
                     remoteId,
                     ExerciseRequest(payload.name, payload.description, payload.targetMuscle)
                 )
-                if (!response.isSuccessful) throw IOException("updateExercise falhou: ${response.code()}")
+                response.throwIfFailed("updateExercise")
             }
             "DELETE" -> {
                 val remoteId = payload.remoteId ?: return
                 val response = apiService.deleteExercise(remoteId)
-                if (!response.isSuccessful && response.code() != 404) {
-                    throw IOException("deleteExercise falhou: ${response.code()}")
-                }
+                if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("deleteExercise")
             }
         }
     }
@@ -397,15 +441,13 @@ class SyncManager(
                     remoteExerciseId,
                     ExerciseSetRequest(payload.reps, payload.weightKg.toDouble(), payload.durationSeconds)
                 )
-                if (!response.isSuccessful) throw IOException("addExerciseSet falhou: ${response.code()}")
+                response.throwIfFailed("addExerciseSet")
                 response.body()?.id?.let { remoteId -> exerciseSetDao.updateRemoteId(op.localId, remoteId) }
             }
             "DELETE" -> {
                 val remoteId = payload.remoteId ?: return
                 val response = apiService.deleteExerciseSet(remoteId)
-                if (!response.isSuccessful && response.code() != 404) {
-                    throw IOException("deleteExerciseSet falhou: ${response.code()}")
-                }
+                if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("deleteExerciseSet")
             }
         }
     }
@@ -420,15 +462,13 @@ class SyncManager(
                     remoteExerciseId,
                     MachineConfigRequest(payload.name, payload.description, payload.angleDegrees?.toDouble())
                 )
-                if (!response.isSuccessful) throw IOException("addMachineConfig falhou: ${response.code()}")
+                response.throwIfFailed("addMachineConfig")
                 response.body()?.id?.let { remoteId -> machineConfigDao.updateRemoteId(op.localId, remoteId) }
             }
             "DELETE" -> {
                 val remoteId = payload.remoteId ?: return
                 val response = apiService.deleteMachineConfig(remoteId)
-                if (!response.isSuccessful && response.code() != 404) {
-                    throw IOException("deleteMachineConfig falhou: ${response.code()}")
-                }
+                if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("deleteMachineConfig")
             }
         }
     }
@@ -442,20 +482,17 @@ class SyncManager(
                 val part = try {
                     uriToMultipart(appContext, payload.localUri.toUri(), "photo")
                 } catch (e: Exception) {
-                    // Ficheiro local ilegível/apagado — não há como recuperar, desiste desta foto.
                     Log.w(TAG, "Foto local ilegível, a desistir do upload: ${e.message}")
                     return
                 }
                 val response = apiService.uploadExercisePhoto(remoteExerciseId, part)
-                if (!response.isSuccessful) throw IOException("uploadExercisePhoto falhou: ${response.code()}")
+                response.throwIfFailed("uploadExercisePhoto")
                 response.body()?.id?.let { remoteId -> exercisePhotoDao.updateRemoteId(op.localId, remoteId) }
             }
             "DELETE" -> {
                 val remoteId = payload.remoteId ?: return
                 val response = apiService.deleteExercisePhoto(remoteId)
-                if (!response.isSuccessful && response.code() != 404) {
-                    throw IOException("deleteExercisePhoto falhou: ${response.code()}")
-                }
+                if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("deleteExercisePhoto")
             }
         }
     }
@@ -470,7 +507,7 @@ class SyncManager(
                     remoteExerciseId,
                     SessionSetRequest(payload.reps, payload.weightKg.toDouble(), payload.durationSeconds)
                 )
-                if (!response.isSuccessful) throw IOException("addRecordedSet falhou: ${response.code()}")
+                response.throwIfFailed("addRecordedSet")
                 val body = response.body() ?: throw IOException("addRecordedSet devolveu corpo vazio")
                 exerciseSessionDao.updateSessionRemoteId(payload.sessionId, body.session.id)
                 exerciseSessionDao.updateSetRemoteId(op.localId, body.set.id)
@@ -478,9 +515,7 @@ class SyncManager(
             "DELETE" -> {
                 val remoteId = payload.remoteId ?: return
                 val response = apiService.deleteRecordedSet(remoteId)
-                if (!response.isSuccessful && response.code() != 404) {
-                    throw IOException("deleteRecordedSet falhou: ${response.code()}")
-                }
+                if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("deleteRecordedSet")
             }
         }
     }
@@ -492,20 +527,28 @@ class SyncManager(
                 val remoteExerciseId = exerciseDao.getByIdOnce(payload.exerciseId)?.remoteId
                     ?: throw Exception("Exercise pai ainda sem remoteId — tenta novamente depois")
                 val response = apiService.finalizeSession(remoteExerciseId)
-                if (!response.isSuccessful && response.code() != 404) {
-                    throw IOException("finalizeSession falhou: ${response.code()}")
-                }
+                if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("finalizeSession")
             }
             "DISCARD" -> {
-                // Se o exercise pai nem sequer existe na API ainda, também não existe lá nenhuma
-                // draft session para descartar — nada a fazer.
                 val remoteExerciseId = exerciseDao.getByIdOnce(payload.exerciseId)?.remoteId ?: return
                 val response = apiService.discardDraftSession(remoteExerciseId)
-                if (!response.isSuccessful && response.code() != 404) {
-                    throw IOException("discardDraftSession falhou: ${response.code()}")
-                }
+                if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("discardDraftSession")
             }
         }
+    }
+
+    /**
+     * Lança a excepção correcta consoante o código HTTP:
+     * - 4xx (≠404): [PermanentSyncException] — erro permanente do servidor, a op deve ser descartada
+     * - outros: [IOException] — erro transiente, a fila deve parar e o WorkManager retenta
+     */
+    private fun Response<*>.throwIfFailed(opName: String) {
+        if (isSuccessful) return
+        val httpCode = code()
+        if (httpCode in 400..499 && httpCode != 404) {
+            throw PermanentSyncException("$opName rejeitado pelo servidor ($httpCode)")
+        }
+        throw IOException("$opName falhou: $httpCode")
     }
 
     // ---------------------------------------------------------------------

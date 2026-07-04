@@ -22,11 +22,16 @@ data class ApiErrorBody(val code: String = "UNKNOWN_ERROR", val message: String 
 /** Envelope de erro da API: `{ "error": { "code": "...", "message": "..." } }` */
 data class ApiErrorEnvelope(val error: ApiErrorBody? = null)
 
+private const val MAX_PHOTO_BYTES = 10L * 1024 * 1024 // 10 MB
+
 /** Converte um Uri local (câmara/galeria) num MultipartBody.Part pronto a enviar para a API. */
 fun uriToMultipart(context: Context, uri: Uri, partName: String = "photo"): MultipartBody.Part {
     val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
     val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
         ?: throw IOException("Não foi possível ler o ficheiro selecionado")
+    if (bytes.size > MAX_PHOTO_BYTES) {
+        throw IOException("Ficheiro demasiado grande (${bytes.size / (1024 * 1024)} MB). Máximo: 10 MB.")
+    }
     val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType) ?: "jpg"
     val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
     return MultipartBody.Part.createFormData(partName, "upload.$extension", requestBody)

@@ -72,12 +72,11 @@ class MuscleUpApp : Application() {
                     UserSession.set(name = user.name, email = user.email)
                     sessionPreferences.save(email = user.email, name = user.name)
                     database.userDao().upsertMirror(user.name, user.email, user.profilePhotoUri)
-                } else if (response.code() == 401) {
-                    // Token JWT inválido/expirado — força novo login.
-                    UserSession.clear()
-                    sessionPreferences.clear()
-                    tokenManager.clear()
                 }
+                // Nota: não tratamos 401 aqui explicitamente.
+                // Se o refreshToken for rejeitado pelo servidor, o TokenRefresher.refresh()
+                // já chama tokenManager.clear() + AuthStateManager.triggerForceLogout(),
+                // que navega para Login de forma limpa e coordenada.
             } catch (_: Exception) {
                 // Sem rede: mantém a sessão local, não força logout (offline-first).
             }
