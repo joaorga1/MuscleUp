@@ -40,6 +40,24 @@ interface ExerciseSessionDao {
     @Query("SELECT * FROM exercise_sessions WHERE exerciseId = :exerciseId AND userId = :userId AND status = 'DRAFT' ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestDraftSession(exerciseId: String, userId: String): ExerciseSessionEntity?
 
+    @Query("SELECT * FROM exercise_sessions WHERE id = :id LIMIT 1")
+    suspend fun getSessionByIdOnce(id: String): ExerciseSessionEntity?
+
+    @Query("SELECT * FROM exercise_sessions WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getSessionByRemoteId(remoteId: String): ExerciseSessionEntity?
+
+    @Query("UPDATE exercise_sessions SET remoteId = :remoteId WHERE id = :id")
+    suspend fun updateSessionRemoteId(id: String, remoteId: String)
+
+    @Query("SELECT * FROM session_exercise_sets WHERE id = :id LIMIT 1")
+    suspend fun getSetByIdOnce(id: String): SessionExerciseSetEntity?
+
+    @Query("SELECT * FROM session_exercise_sets WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getSetByRemoteId(remoteId: String): SessionExerciseSetEntity?
+
+    @Query("UPDATE session_exercise_sets SET remoteId = :remoteId WHERE id = :id")
+    suspend fun updateSetRemoteId(id: String, remoteId: String)
+
     @Query("SELECT * FROM session_exercise_sets WHERE sessionId = :sessionId ORDER BY setOrder ASC")
     suspend fun getSetsForSessionOnce(sessionId: String): List<SessionExerciseSetEntity>
 

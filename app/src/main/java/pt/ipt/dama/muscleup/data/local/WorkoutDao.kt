@@ -16,6 +16,15 @@ interface WorkoutDao {
     @Query("SELECT * FROM workouts WHERE id = :id")
     fun getWorkoutById(id: String): Flow<WorkoutEntity?>
 
+    @Query("SELECT * FROM workouts WHERE id = :id LIMIT 1")
+    suspend fun getByIdOnce(id: String): WorkoutEntity?
+
+    @Query("SELECT * FROM workouts WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): WorkoutEntity?
+
+    @Query("UPDATE workouts SET remoteId = :remoteId WHERE id = :id")
+    suspend fun updateRemoteId(id: String, remoteId: String)
+
     @Query("SELECT COUNT(*) FROM workouts WHERE userId = :userId")
     suspend fun getCountForUser(userId: String): Int
 

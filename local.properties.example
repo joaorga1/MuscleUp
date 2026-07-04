@@ -1,0 +1,15 @@
+# Copia este ficheiro para "local.properties" (que é ignorado pelo Git)
+# e preenche com os teus valores reais. NUNCA commites o local.properties.
+
+sdk.dir=C\:\\Users\\<user>\\AppData\\Local\\Android\\Sdk
+
+# Signing config (não partilhar publicamente)
+STORE_FILE=C\:\\path\\to\\muscleup-release.jks
+STORE_PASSWORD=
+KEY_ALIAS=
+KEY_PASSWORD=
+
+# API (não partilhar publicamente)
+# URL base do backend consumido pela app.
+API_BASE_URL=https://muscle-up-api.vercel.app/
+

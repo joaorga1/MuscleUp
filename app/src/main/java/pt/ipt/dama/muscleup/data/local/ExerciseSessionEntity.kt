@@ -21,7 +21,10 @@ data class ExerciseSessionEntity(
     val userId: String,
     val createdAt: Long,
     val finishedAt: Long? = null,
-    val status: String = "DRAFT"
+    val status: String = "DRAFT",
+    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
+    // não foi sincronizado (criado só localmente / offline).
+    val remoteId: String? = null
 )
 
 

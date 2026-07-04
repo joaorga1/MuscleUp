@@ -11,7 +11,10 @@ data class WorkoutEntity(
     val userId: String,
     val title: String,
     val description: String,
-    val type: String   // WorkoutType.name
+    val type: String,   // WorkoutType.name
+    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
+    // não foi sincronizado (criado só localmente / offline).
+    val remoteId: String? = null
 )
 
 fun WorkoutEntity.toModel(exercises: List<pt.ipt.dama.muscleup.model.Exercise> = emptyList()) = Workout(

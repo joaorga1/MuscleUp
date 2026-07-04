@@ -15,6 +15,15 @@ interface ExerciseSetDao {
     @Query("SELECT COALESCE(MAX(seriesOrder), 0) + 1 FROM exercise_sets WHERE exerciseId = :exerciseId")
     suspend fun getNextSeriesOrder(exerciseId: String): Int
 
+    @Query("SELECT * FROM exercise_sets WHERE id = :id LIMIT 1")
+    suspend fun getByIdOnce(id: String): ExerciseSetEntity?
+
+    @Query("SELECT * FROM exercise_sets WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): ExerciseSetEntity?
+
+    @Query("UPDATE exercise_sets SET remoteId = :remoteId WHERE id = :id")
+    suspend fun updateRemoteId(id: String, remoteId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(set: ExerciseSetEntity)
 

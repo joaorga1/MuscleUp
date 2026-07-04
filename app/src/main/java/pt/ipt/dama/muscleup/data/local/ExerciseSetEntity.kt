@@ -23,7 +23,10 @@ data class ExerciseSetEntity(
     val seriesOrder: Int,
     val reps: Int,
     val durationSeconds: Int,
-    val weightKg: Float
+    val weightKg: Float,
+    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
+    // não foi sincronizado (criado só localmente / offline).
+    val remoteId: String? = null
 )
 
 fun ExerciseSetEntity.toModel() = ExerciseSet(

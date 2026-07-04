@@ -7,7 +7,7 @@ private const val PREFS_NAME = "muscleup_session"
 private const val KEY_EMAIL = "session_email"
 private const val KEY_NAME = "session_name"
 private const val KEY_TIMESTAMP = "session_timestamp"
-private const val SESSION_DURATION_MS = 7L * 24 * 60 * 60 * 1000 // 7 dias em ms
+private const val SESSION_DURATION_MS = 365L * 24 * 60 * 60 * 1000 // 1 ano em ms
 
 class SessionPreferences(context: Context) {
 

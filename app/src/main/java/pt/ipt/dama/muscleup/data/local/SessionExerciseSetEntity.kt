@@ -23,7 +23,10 @@ data class SessionExerciseSetEntity(
     val durationSeconds: Int,
     val weightKg: Float,
     val setOrder: Int,
-    val createdAt: Long
+    val createdAt: Long,
+    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
+    // não foi sincronizado (criado só localmente / offline).
+    val remoteId: String? = null
 )
 
 fun SessionExerciseSetEntity.toModel() = SessionExerciseSet(

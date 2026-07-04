@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import pt.ipt.dama.muscleup.MuscleUpApp
 import pt.ipt.dama.muscleup.data.local.AppDatabase
 import pt.ipt.dama.muscleup.data.local.ExerciseEntity
 import pt.ipt.dama.muscleup.data.local.toModel
@@ -31,6 +32,16 @@ class WorkoutViewModel(
     private val workoutDao = db.workoutDao()
     private val exerciseDao = db.exerciseDao()
     private val userDao = db.userDao()
+
+    init {
+        // Passo 8.3 — esvazia primeiro a fila pendente (para não "ressuscitar" exercises
+        // apagados offline) e só depois traz da API os que ainda não existem localmente.
+        viewModelScope.launch {
+            val app = getApplication<MuscleUpApp>()
+            try { app.syncManager.syncPending() } catch (_: Exception) { /* offline: ignorar */ }
+            app.syncManager.pullExercises(workoutId)
+        }
+    }
 
     val userName: String get() = UserSession.currentUserName
 
@@ -50,17 +61,20 @@ class WorkoutViewModel(
     val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
 
     fun addExercise(name: String, description: String, targetMuscle: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
-                exerciseDao.insert(
-                    ExerciseEntity(
-                        id = UUID.randomUUID().toString(),
-                        workoutId = workoutId,
-                        name = name.trim(),
-                        description = description.trim(),
-                        targetMuscle = targetMuscle.trim()
-                    )
+                val entity = ExerciseEntity(
+                    id = UUID.randomUUID().toString(),
+                    workoutId = workoutId,
+                    name = name.trim(),
+                    description = description.trim(),
+                    targetMuscle = targetMuscle.trim()
                 )
+                exerciseDao.insert(entity)
+                // Passo 8.3 — grava local primeiro (instantâneo), sincroniza com a API a seguir.
+                app.syncManager.onExerciseCreated(entity)
+                app.triggerSync()
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao guardar exercício. Tenta novamente.")
             }
@@ -68,17 +82,22 @@ class WorkoutViewModel(
     }
 
     fun editExercise(exerciseId: String, name: String, description: String, targetMuscle: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
-                exerciseDao.update(
-                    ExerciseEntity(
-                        id = exerciseId,
-                        workoutId = workoutId,
-                        name = name.trim(),
-                        description = description.trim(),
-                        targetMuscle = targetMuscle.trim()
-                    )
+                // Preserva o remoteId já atribuído (senão o próximo sync trataria isto como um novo exercise).
+                val existingRemoteId = exerciseDao.getByIdOnce(exerciseId)?.remoteId
+                val entity = ExerciseEntity(
+                    id = exerciseId,
+                    workoutId = workoutId,
+                    name = name.trim(),
+                    description = description.trim(),
+                    targetMuscle = targetMuscle.trim(),
+                    remoteId = existingRemoteId
                 )
+                exerciseDao.update(entity)
+                app.syncManager.onExerciseUpdated(entity)
+                app.triggerSync()
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao atualizar exercício. Tenta novamente.")
             }
@@ -86,9 +105,15 @@ class WorkoutViewModel(
     }
 
     fun deleteExercise(exerciseId: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
+                val existing = exerciseDao.getByIdOnce(exerciseId)
                 exerciseDao.deleteById(exerciseId)
+                if (existing != null) {
+                    app.syncManager.onExerciseDeleted(existing)
+                    app.triggerSync()
+                }
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao apagar exercício. Tenta novamente.")
             }

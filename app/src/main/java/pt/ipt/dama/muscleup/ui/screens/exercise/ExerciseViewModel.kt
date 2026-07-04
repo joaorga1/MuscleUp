@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import pt.ipt.dama.muscleup.MuscleUpApp
 import pt.ipt.dama.muscleup.data.local.AppDatabase
 import pt.ipt.dama.muscleup.data.local.ExercisePhotoEntity
 import pt.ipt.dama.muscleup.data.local.ExerciseSetEntity
@@ -71,6 +72,16 @@ class ExerciseViewModel(
 
     init {
         restoreDraftSession()
+        // Passo 8.3 — esvazia primeiro a fila pendente e só depois traz da API os dados
+        // (sets, machine configs, fotos, histórico de sessões) que ainda não existem localmente.
+        viewModelScope.launch {
+            val app = getApplication<MuscleUpApp>()
+            try { app.syncManager.syncPending() } catch (_: Exception) { /* offline: ignorar */ }
+            app.syncManager.pullExerciseSets(exerciseId)
+            app.syncManager.pullMachineConfigs(exerciseId)
+            app.syncManager.pullExercisePhotos(exerciseId)
+            app.syncManager.pullSessionHistory(exerciseId, currentUserId)
+        }
     }
 
     val userName: String get() = UserSession.currentUserName
@@ -146,20 +157,22 @@ class ExerciseViewModel(
             viewModelScope.launch { _uiEvent.emit("O peso não pode ser negativo") }
             return
         }
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
                 val nextSeriesOrder = exerciseSetDao.getNextSeriesOrder(exerciseId)
-                exerciseSetDao.insert(
-                    ExerciseSetEntity(
-                        id = UUID.randomUUID().toString(),
-                        exerciseId = exerciseId,
-                        createdAt = System.currentTimeMillis(),
-                        seriesOrder = nextSeriesOrder,
-                        reps = reps,
-                        durationSeconds = durationSeconds ?: 0,
-                        weightKg = weightKg ?: 0f
-                    )
+                val entity = ExerciseSetEntity(
+                    id = UUID.randomUUID().toString(),
+                    exerciseId = exerciseId,
+                    createdAt = System.currentTimeMillis(),
+                    seriesOrder = nextSeriesOrder,
+                    reps = reps,
+                    durationSeconds = durationSeconds ?: 0,
+                    weightKg = weightKg ?: 0f
                 )
+                exerciseSetDao.insert(entity)
+                app.syncManager.onExerciseSetCreated(entity)
+                app.triggerSync()
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao guardar série. Tenta novamente.")
             }
@@ -167,9 +180,15 @@ class ExerciseViewModel(
     }
 
     fun removePredefinedSet(setId: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
+                val existing = exerciseSetDao.getByIdOnce(setId)
                 exerciseSetDao.deleteById(setId)
+                if (existing != null) {
+                    app.syncManager.onExerciseSetDeleted(existing)
+                    app.triggerSync()
+                }
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao remover série. Tenta novamente.")
             }
@@ -181,18 +200,20 @@ class ExerciseViewModel(
             viewModelScope.launch { _uiEvent.emit("O nome da configuração não pode estar vazio") }
             return
         }
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
-                machineConfigDao.insert(
-                    MachineConfigEntity(
-                        id = UUID.randomUUID().toString(),
-                        exerciseId = exerciseId,
-                        name = name.trim(),
-                        description = description.trim(),
-                        createdAt = System.currentTimeMillis(),
-                        angleDegrees = angleDegrees
-                    )
+                val entity = MachineConfigEntity(
+                    id = UUID.randomUUID().toString(),
+                    exerciseId = exerciseId,
+                    name = name.trim(),
+                    description = description.trim(),
+                    createdAt = System.currentTimeMillis(),
+                    angleDegrees = angleDegrees
                 )
+                machineConfigDao.insert(entity)
+                app.syncManager.onMachineConfigCreated(entity)
+                app.triggerSync()
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao guardar configuração. Tenta novamente.")
             }
@@ -200,9 +221,15 @@ class ExerciseViewModel(
     }
 
     fun removeMachineConfig(configId: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
+                val existing = machineConfigDao.getByIdOnce(configId)
                 machineConfigDao.deleteById(configId)
+                if (existing != null) {
+                    app.syncManager.onMachineConfigDeleted(existing)
+                    app.triggerSync()
+                }
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao remover configuração. Tenta novamente.")
             }
@@ -216,16 +243,18 @@ class ExerciseViewModel(
     }
 
     fun addPhoto(uri: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
-                exercisePhotoDao.insert(
-                    ExercisePhotoEntity(
-                        id = UUID.randomUUID().toString(),
-                        exerciseId = exerciseId,
-                        uri = uri,
-                        createdAt = System.currentTimeMillis()
-                    )
+                val entity = ExercisePhotoEntity(
+                    id = UUID.randomUUID().toString(),
+                    exerciseId = exerciseId,
+                    uri = uri,
+                    createdAt = System.currentTimeMillis()
                 )
+                exercisePhotoDao.insert(entity)
+                app.syncManager.onPhotoCreated(entity)
+                app.triggerSync()
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao guardar foto. Tenta novamente.")
             }
@@ -233,11 +262,16 @@ class ExerciseViewModel(
     }
 
     fun removePhoto(photoId: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
-                val uri = exercisePhotoDao.getUriById(photoId)
+                val existing = exercisePhotoDao.getByIdOnce(photoId)
                 exercisePhotoDao.deleteById(photoId)
-                uri?.let { deleteLocalPhotoFile(it) }
+                existing?.uri?.let { deleteLocalPhotoFile(it) }
+                if (existing != null) {
+                    app.syncManager.onPhotoDeleted(existing)
+                    app.triggerSync()
+                }
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao remover foto. Tenta novamente.")
             }
@@ -267,6 +301,7 @@ class ExerciseViewModel(
             viewModelScope.launch { _uiEvent.emit("O peso não pode ser negativo") }
             return
         }
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
                 val sessionId = ensureDraftSessionId()
@@ -282,6 +317,8 @@ class ExerciseViewModel(
                 )
                 sessionDao.insertSessionSet(sessionSet)
                 reloadCurrentSessionSets(sessionId)
+                app.syncManager.onSessionSetCreated(exerciseId, sessionSet)
+                app.triggerSync()
                 Log.d(TAG, "Set added: reps=$reps, weight=${weightKg ?: 0f}kg, time=${durationSeconds ?: 0}s, order=$setOrder")
             } catch (e: Exception) {
                 Log.e(TAG, "Error adding recorded set: ${e.message}", e)
@@ -291,10 +328,16 @@ class ExerciseViewModel(
     }
 
     fun removeRecordedSet(setId: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
+                val existing = sessionDao.getSetByIdOnce(setId)
                 sessionDao.deleteSessionSetById(setId)
                 currentSessionId?.let { reloadCurrentSessionSets(it) }
+                if (existing != null) {
+                    app.syncManager.onSessionSetDeleted(exerciseId, existing)
+                    app.triggerSync()
+                }
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao remover série. Tenta novamente.")
             }
@@ -302,12 +345,16 @@ class ExerciseViewModel(
     }
 
     fun finalizeSession() {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             if (currentSessionId != null && _currentSessionSets.value.isNotEmpty()) {
                 try {
+                    val sessionId = currentSessionId!!
                     val finishTime = System.currentTimeMillis()
-                    sessionDao.finalizeSession(currentSessionId!!, finishTime)
+                    sessionDao.finalizeSession(sessionId, finishTime)
                     resetCurrentSessionState()
+                    app.syncManager.onSessionFinalized(exerciseId, sessionId)
+                    app.triggerSync()
                     _uiEvent.emit("Sessão guardada com sucesso!")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error finalizing session: ${e.message}", e)
@@ -320,10 +367,16 @@ class ExerciseViewModel(
     }
 
     fun clearSession() {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
-                currentSessionId?.let { sessionDao.deleteSessionById(it) }
+                val sessionId = currentSessionId
+                sessionId?.let { sessionDao.deleteSessionById(it) }
                 resetCurrentSessionState()
+                if (sessionId != null) {
+                    app.syncManager.onSessionDiscarded(exerciseId, sessionId)
+                    app.triggerSync()
+                }
             } catch (_: Exception) {
                 _uiEvent.emit("Erro ao limpar sessão. Tenta novamente.")
             }

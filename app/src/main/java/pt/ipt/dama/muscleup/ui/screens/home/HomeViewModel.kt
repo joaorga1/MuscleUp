@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.MuscleUpApp
 import pt.ipt.dama.muscleup.data.local.AppDatabase
-import pt.ipt.dama.muscleup.data.local.DatabaseSeeder
 import pt.ipt.dama.muscleup.data.local.WorkoutEntity
 import pt.ipt.dama.muscleup.data.local.toModel
 import pt.ipt.dama.muscleup.data.session.UserSession
@@ -52,7 +51,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         observeWorkoutsForCurrentUser()
-        viewModelScope.launch { seedIfNeeded(_currentUserId.value) }
+        viewModelScope.launch {
+            syncBeforePull(_currentUserId.value)
+        }
     }
 
     private fun observeWorkoutsForCurrentUser() {
@@ -73,25 +74,30 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val resolvedUserId = resolveCurrentUserId()
         if (resolvedUserId == _currentUserId.value) return
         _currentUserId.value = resolvedUserId
-        viewModelScope.launch { seedIfNeeded(resolvedUserId) }
+        viewModelScope.launch {
+            syncBeforePull(resolvedUserId)
+        }
     }
 
     fun getWorkoutById(id: String): Workout? = _workouts.value.find { it.id == id }
 
     fun addWorkout(title: String, description: String, type: WorkoutType) {
         val userId = _currentUserId.value
+        val app = getApplication<MuscleUpApp>()
         if (userId.isNotBlank()) {
             viewModelScope.launch {
                 try {
-                    workoutDao.insert(
-                        WorkoutEntity(
-                            id = UUID.randomUUID().toString(),
-                            userId = userId,
-                            title = title.trim(),
-                            description = description.trim(),
-                            type = type.name
-                        )
+                    val entity = WorkoutEntity(
+                        id = UUID.randomUUID().toString(),
+                        userId = userId,
+                        title = title.trim(),
+                        description = description.trim(),
+                        type = type.name
                     )
+                    workoutDao.insert(entity)
+                    // Passo 8.3 — grava local primeiro (instantâneo), sincroniza com a API a seguir.
+                    app.syncManager.onWorkoutCreated(entity)
+                    app.triggerSync()
                 } catch (_: Exception) {
                     _uiEvent.emit("Erro ao guardar treino. Tenta novamente.")
                 }
@@ -101,18 +107,23 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun editWorkout(id: String, title: String, description: String, type: WorkoutType) {
         val userId = _currentUserId.value
+        val app = getApplication<MuscleUpApp>()
         if (userId.isNotBlank()) {
             viewModelScope.launch {
                 try {
-                    workoutDao.update(
-                        WorkoutEntity(
-                            id = id,
-                            userId = userId,
-                            title = title.trim(),
-                            description = description.trim(),
-                            type = type.name
-                        )
+                    // Preserva o remoteId já atribuído (senão o próximo sync trataria isto como um novo workout).
+                    val existingRemoteId = workoutDao.getByIdOnce(id)?.remoteId
+                    val entity = WorkoutEntity(
+                        id = id,
+                        userId = userId,
+                        title = title.trim(),
+                        description = description.trim(),
+                        type = type.name,
+                        remoteId = existingRemoteId
                     )
+                    workoutDao.update(entity)
+                    app.syncManager.onWorkoutUpdated(entity)
+                    app.triggerSync()
                 } catch (_: Exception) {
                     _uiEvent.emit("Erro ao atualizar treino. Tenta novamente.")
                 }
@@ -121,23 +132,40 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteWorkout(id: String) {
+        val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
+                val existing = workoutDao.getByIdOnce(id)
                 workoutDao.deleteById(id)
-                } catch (_: Exception) {
-                    _uiEvent.emit("Erro ao apagar treino. Tenta novamente.")
+                if (existing != null) {
+                    app.syncManager.onWorkoutDeleted(existing)
+                    app.triggerSync()
                 }
+            } catch (_: Exception) {
+                _uiEvent.emit("Erro ao apagar treino. Tenta novamente.")
+            }
         }
     }
 
     fun logout() {
-        sessionPreferences.clear()
-        UserSession.clear()
-        _currentUserId.value = ""
+        val app = getApplication<MuscleUpApp>()
+        // Tenta esvaziar a fila pendente ENQUANTO o token ainda é válido, antes de limpar a sessão.
+        viewModelScope.launch {
+            try { app.syncManager.syncPending() } catch (_: Exception) { /* offline: ignorar */ }
+            try { app.apiService.logout() } catch (_: Exception) { /* stateless: ignorar erro */ }
+            app.tokenManager.clear()
+            sessionPreferences.clear()
+            UserSession.clear()
+            _currentUserId.value = ""
+        }
     }
 
-    private suspend fun seedIfNeeded(userId: String) {
-        if (userId.isNotBlank()) DatabaseSeeder.seed(db, userId)
+    // Esvazia primeiro a fila de operações pendentes e SÓ DEPOIS puxa o estado remoto.
+    private suspend fun syncBeforePull(userId: String) {
+        if (userId.isBlank()) return
+        val app = getApplication<MuscleUpApp>()
+        try { app.syncManager.syncPending() } catch (_: Exception) { /* offline: ignorar */ }
+        app.syncManager.pullWorkouts(userId)
     }
 
     private fun resolveCurrentUserId(): String {

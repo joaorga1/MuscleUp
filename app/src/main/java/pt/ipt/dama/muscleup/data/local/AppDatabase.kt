@@ -8,8 +8,8 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [UserEntity::class, WorkoutEntity::class, ExerciseEntity::class, ExerciseSetEntity::class, ExerciseSessionEntity::class, SessionExerciseSetEntity::class, MachineConfigEntity::class, ExercisePhotoEntity::class],
-    version = 10,
+    entities = [UserEntity::class, WorkoutEntity::class, ExerciseEntity::class, ExerciseSetEntity::class, ExerciseSessionEntity::class, SessionExerciseSetEntity::class, MachineConfigEntity::class, ExercisePhotoEntity::class, PendingSyncEntity::class],
+    version = 14,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -21,6 +21,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun exerciseSessionDao(): ExerciseSessionDao
     abstract fun machineConfigDao(): MachineConfigDao
     abstract fun exercisePhotoDao(): ExercisePhotoDao
+    abstract fun pendingSyncDao(): PendingSyncDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -189,7 +190,61 @@ abstract class AppDatabase : RoomDatabase() {
 
         private val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE machine_configs ADD COLUMN angleDegrees REAL")
+                // Defensivo: alguns dispositivos (instalação fresca) já podem ter esta coluna
+                // (o schema da entidade já a incluía antes desta migração ser alcançável).
+                val cursor = db.query("PRAGMA table_info(machine_configs)")
+                var hasColumn = false
+                cursor.use {
+                    val nameIndex = it.getColumnIndex("name")
+                    while (it.moveToNext()) {
+                        if (it.getString(nameIndex) == "angleDegrees") {
+                            hasColumn = true
+                            break
+                        }
+                    }
+                }
+                if (!hasColumn) {
+                    db.execSQL("ALTER TABLE machine_configs ADD COLUMN angleDegrees REAL")
+                }
+            }
+        }
+
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Passo 8.3 — sincronização offline-first
+                db.execSQL("ALTER TABLE workouts ADD COLUMN remoteId TEXT")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS pending_sync (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        entityType TEXT NOT NULL,
+                        operation TEXT NOT NULL,
+                        localId TEXT NOT NULL,
+                        payloadJson TEXT,
+                        createdAt INTEGER NOT NULL,
+                        attempts INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Passo 8.3 — extensão do padrão outbox (offline-first) à vertical de Exercises.
+                db.execSQL("ALTER TABLE exercises ADD COLUMN remoteId TEXT")
+            }
+        }
+
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Passo 8.3 — extensão do padrão outbox (offline-first) a Exercise Sets,
+                // Machine Configs, Exercise Photos e Exercise Sessions/Session Sets.
+                db.execSQL("ALTER TABLE exercise_sets ADD COLUMN remoteId TEXT")
+                db.execSQL("ALTER TABLE machine_configs ADD COLUMN remoteId TEXT")
+                db.execSQL("ALTER TABLE exercise_photos ADD COLUMN remoteId TEXT")
+                db.execSQL("ALTER TABLE exercise_sessions ADD COLUMN remoteId TEXT")
+                db.execSQL("ALTER TABLE session_exercise_sets ADD COLUMN remoteId TEXT")
             }
         }
 
@@ -209,6 +264,9 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_8_9)
                     .addMigrations(MIGRATION_9_10)
                     .addMigrations(MIGRATION_10_11)
+                    .addMigrations(MIGRATION_11_12)
+                    .addMigrations(MIGRATION_12_13)
+                    .addMigrations(MIGRATION_13_14)
                     .fallbackToDestructiveMigration(false)
                 .build().also { INSTANCE = it }
             }

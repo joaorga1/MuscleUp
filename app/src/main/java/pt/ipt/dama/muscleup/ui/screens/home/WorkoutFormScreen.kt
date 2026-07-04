@@ -23,8 +23,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import pt.ipt.dama.muscleup.R
@@ -52,6 +57,8 @@ fun WorkoutFormScreen(
     else
         stringResource(R.string.workout_form_title_new)
 
+    val focusManager = LocalFocusManager.current
+
     Scaffold(
         topBar = {
             AppTopBar(
@@ -77,6 +84,8 @@ fun WorkoutFormScreen(
                 isError = titleError,
                 supportingText = { if (titleError) Text("O título é obrigatório") },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -85,6 +94,8 @@ fun WorkoutFormScreen(
                 onValueChange = { description = it },
                 label = { Text(stringResource(R.string.workout_form_field_description)) },
                 minLines = 3,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -98,7 +109,11 @@ fun WorkoutFormScreen(
                 WorkoutType.entries.forEach { type ->
                     FilterChip(
                         selected = selectedType == type,
-                        onClick = { selectedType = type; typeError = false },
+                        onClick = {
+                            focusManager.clearFocus()
+                            selectedType = type
+                            typeError = false
+                        },
                         label = { Text(stringResource(type.labelRes)) }
                     )
                 }

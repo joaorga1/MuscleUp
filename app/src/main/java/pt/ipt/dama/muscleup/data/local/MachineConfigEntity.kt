@@ -22,7 +22,10 @@ data class MachineConfigEntity(
     val name: String,
     val description: String,
     val createdAt: Long,
-    val angleDegrees: Float? = null
+    val angleDegrees: Float? = null,
+    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
+    // não foi sincronizado (criado só localmente / offline).
+    val remoteId: String? = null
 )
 
 fun MachineConfigEntity.toModel() = MachineConfig(

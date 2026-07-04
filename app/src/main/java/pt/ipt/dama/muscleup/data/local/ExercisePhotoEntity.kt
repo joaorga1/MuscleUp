@@ -20,7 +20,10 @@ data class ExercisePhotoEntity(
     @PrimaryKey val id: String,
     val exerciseId: String,
     val uri: String,
-    val createdAt: Long
+    val createdAt: Long,
+    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
+    // não foi sincronizado (criado só localmente / offline).
+    val remoteId: String? = null
 )
 
 fun ExercisePhotoEntity.toModel() = ExercisePhoto(
@@ -28,4 +31,5 @@ fun ExercisePhotoEntity.toModel() = ExercisePhoto(
     uri = uri,
     createdAt = createdAt
 )
+
 

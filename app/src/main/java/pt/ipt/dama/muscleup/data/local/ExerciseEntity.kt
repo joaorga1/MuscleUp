@@ -23,7 +23,10 @@ data class ExerciseEntity(
     val workoutId: String,
     val name: String,
     val description: String,
-    val targetMuscle: String
+    val targetMuscle: String,
+    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
+    // não foi sincronizado (criado só localmente / offline).
+    val remoteId: String? = null
 )
 
 fun ExerciseEntity.toModel(
