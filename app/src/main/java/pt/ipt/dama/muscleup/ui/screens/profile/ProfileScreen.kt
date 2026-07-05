@@ -49,15 +49,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
+import pt.ipt.dama.muscleup.util.rememberImageModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 @Composable
@@ -121,17 +123,20 @@ fun ProfileScreen(
         .trim().split(" ").filter { it.isNotBlank() }.take(2)
         .joinToString("") { it.first().uppercase() }.ifBlank { "?" }
 
+    // Resets when the URI changes (ex: após upload bem-sucedido, força nova tentativa)
+    var imageLoadFailed by remember(profilePhotoUri) { mutableStateOf(false) }
+
     // Diálogo foto
     if (showPhotoDialog) {
         AlertDialog(
             onDismissRequest = { showPhotoDialog = false },
-            title = { Text("Foto de perfil") },
+            title = { Text(stringResource(R.string.content_desc_profile_photo)) },
             text = {
                 Column {
                     TextButton(
                         onClick = { showPhotoDialog = false; launchCamera() },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Câmara") }
+                    ) { Text(stringResource(R.string.action_camera)) }
                     TextButton(
                         onClick = {
                             showPhotoDialog = false
@@ -140,20 +145,20 @@ fun ProfileScreen(
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Galeria") }
+                    ) { Text(stringResource(R.string.action_gallery)) }
                     if (profilePhotoUri != null) {
                         TextButton(
                             onClick = { showPhotoDialog = false; viewModel.removeProfilePhoto() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Remover foto", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.content_desc_remove_photo), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showPhotoDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { showPhotoDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -161,13 +166,13 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Perfil",
+                title = stringResource(R.string.profile_title),
                 showBackButton = true,
                 onBackClick = { navController.popBackStack() },
                 onLogoutClick = onLogout
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState, modifier = Modifier.imePadding()) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -191,12 +196,13 @@ fun ProfileScreen(
                         .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (profilePhotoUri != null) {
+                    if (profilePhotoUri != null && !imageLoadFailed) {
                         AsyncImage(
-                            model = profilePhotoUri!!.toUri(),
-                            contentDescription = "Foto de perfil",
+                            model = rememberImageModel(profilePhotoUri),
+                            contentDescription = stringResource(R.string.content_desc_profile_photo),
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            onError = { imageLoadFailed = true }
                         )
                     } else {
                         Text(
@@ -217,7 +223,7 @@ fun ProfileScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar foto",
+                        contentDescription = stringResource(R.string.content_desc_edit_photo),
                         tint = MaterialTheme.colorScheme.onSecondary,
                         modifier = Modifier.size(16.dp)
                     )
@@ -230,7 +236,7 @@ fun ProfileScreen(
 
             // ─── Informação do utilizador ──────────────────────────────
             Text(
-                text = "Informação",
+                text = stringResource(R.string.profile_section_info),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.fillMaxWidth()
@@ -242,7 +248,7 @@ fun ProfileScreen(
                 OutlinedTextField(
                     value = nameInput,
                     onValueChange = { nameInput = it },
-                    label = { Text("Nome") },
+                    label = { Text(stringResource(R.string.field_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -258,18 +264,18 @@ fun ProfileScreen(
                         },
                         enabled = nameInput.trim().isNotBlank(),
                         modifier = Modifier.weight(1f)
-                    ) { Text("Guardar") }
+                    ) { Text(stringResource(R.string.action_save)) }
                     TextButton(
                         onClick = {
                             nameInput = viewModel.userName
                             isEditingName = false
                         },
                         modifier = Modifier.weight(1f)
-                    ) { Text("Cancelar") }
+                    ) { Text(stringResource(R.string.action_cancel)) }
                 }
             } else {
                 ProfileInfoRow(
-                    label = "Nome",
+                    label = stringResource(R.string.field_name),
                     value = viewModel.userName.ifBlank { "—" },
                     onEdit = { nameInput = viewModel.userName; isEditingName = true }
                 )
@@ -278,7 +284,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Email (só leitura — é o identificador da conta)
-            ProfileInfoRow(label = "Email", value = viewModel.userEmail.ifBlank { "—" })
+            ProfileInfoRow(label = stringResource(R.string.field_email), value = viewModel.userEmail.ifBlank { "—" })
 
             Spacer(modifier = Modifier.height(40.dp))
             HorizontalDivider()
@@ -292,14 +298,14 @@ fun ProfileScreen(
                     onClick = { showPasswordDialog = true },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Alterar password")
+                    Text(stringResource(R.string.profile_change_password))
                 }
                 Button(
                     onClick = onLogout,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Terminar Sessão")
+                    Text(stringResource(R.string.profile_logout_button))
                 }
             }
         }
@@ -324,13 +330,13 @@ fun ProfileScreen(
                 showPasswordDialog = false
                 viewModel.clearPasswordError()
             },
-            title = { Text("Alterar password") },
+            title = { Text(stringResource(R.string.profile_change_password)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = currentPw,
                         onValueChange = { currentPw = it; viewModel.clearPasswordError() },
-                        label = { Text("Password atual") },
+                        label = { Text(stringResource(R.string.profile_field_current_password)) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth()
@@ -338,7 +344,7 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = newPw,
                         onValueChange = { newPw = it; viewModel.clearPasswordError() },
-                        label = { Text("Nova password") },
+                        label = { Text(stringResource(R.string.profile_field_new_password)) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth()
@@ -346,7 +352,7 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = confirmPw,
                         onValueChange = { confirmPw = it; viewModel.clearPasswordError() },
-                        label = { Text("Confirmar nova password") },
+                        label = { Text(stringResource(R.string.profile_field_confirm_new_password)) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth()
@@ -362,14 +368,14 @@ fun ProfileScreen(
             },
             confirmButton = {
                 Button(onClick = { viewModel.changePassword(currentPw, newPw, confirmPw) }) {
-                    Text("Guardar")
+                    Text(stringResource(R.string.action_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showPasswordDialog = false
                     viewModel.clearPasswordError()
-                }) { Text("Cancelar") }
+                }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -405,7 +411,7 @@ private fun ProfileInfoRow(
             IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Default.Edit,
-                    contentDescription = "Editar $label",
+                    contentDescription = stringResource(R.string.content_desc_edit_field_prefix) + label,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )

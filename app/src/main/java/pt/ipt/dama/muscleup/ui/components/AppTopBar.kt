@@ -26,10 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import coil.compose.AsyncImage
+import pt.ipt.dama.muscleup.R
+import pt.ipt.dama.muscleup.util.rememberImageModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,7 @@ fun AppTopBar(
     showBackButton: Boolean = false,
     onBackClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
 ) {
     TopAppBar(
@@ -48,7 +51,7 @@ fun AppTopBar(
         navigationIcon = {
             if (showBackButton) {
                 IconButton(onClick = onBackClick) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.content_desc_back))
                 }
             }
         },
@@ -58,6 +61,7 @@ fun AppTopBar(
                     userName = userName,
                     profilePhotoUri = profilePhotoUri,
                     onProfileClick = onProfileClick,
+                    onSettingsClick = onSettingsClick,
                     onLogoutClick = onLogoutClick
                 )
             }
@@ -71,10 +75,13 @@ fun UserAvatar(
     modifier: Modifier = Modifier,
     profilePhotoUri: String? = null,
     onProfileClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
 ) {
     val initial = userName.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
     var expanded by remember { mutableStateOf(false) }
+    // Resets when the URI changes (ex: após upload ou remoção de foto de perfil)
+    var imageLoadFailed by remember(profilePhotoUri) { mutableStateOf(false) }
 
     Box(modifier = modifier.padding(end = 12.dp)) {
         Box(
@@ -85,14 +92,15 @@ fun UserAvatar(
                 .clickable { expanded = true },
             contentAlignment = Alignment.Center
         ) {
-            if (profilePhotoUri != null) {
+            if (profilePhotoUri != null && !imageLoadFailed) {
                 AsyncImage(
-                    model = profilePhotoUri.toUri(),
-                    contentDescription = "Foto de perfil",
+                    model = rememberImageModel(profilePhotoUri),
+                    contentDescription = stringResource(R.string.content_desc_profile_photo),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(CircleShape)
+                        .clip(CircleShape),
+                    onError = { imageLoadFailed = true }
                 )
             } else {
                 Text(
@@ -108,11 +116,15 @@ fun UserAvatar(
             onDismissRequest = { expanded = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Perfil") },
+                text = { Text(stringResource(R.string.menu_profile)) },
                 onClick = { expanded = false; onProfileClick() }
             )
             DropdownMenuItem(
-                text = { Text("Sair") },
+                text = { Text(stringResource(R.string.menu_settings)) },
+                onClick = { expanded = false; onSettingsClick() }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.menu_logout)) },
                 onClick = { expanded = false; onLogoutClick() }
             )
         }

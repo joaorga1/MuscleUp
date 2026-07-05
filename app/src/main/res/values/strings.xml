@@ -35,8 +35,173 @@
     <string name="content_desc_add">Adicionar</string>
     <string name="content_desc_edit">Editar</string>
     <string name="content_desc_delete">Apagar</string>
+    <string name="content_desc_back">Voltar</string>
+    <string name="content_desc_profile_photo">Foto de perfil</string>
     <string name="delete_exercise_title">Apagar exercício</string>
     <string name="delete_exercise_message">Tens a certeza que queres apagar \"%s\"?</string>
     <string name="action_delete">Apagar</string>
     <string name="action_cancel">Cancelar</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_remove">Remover</string>
+    <string name="action_add">Adicionar</string>
+    <string name="action_close">Fechar</string>
+    <string name="action_finish">Finalizar</string>
+    <string name="action_clear">Limpar</string>
+    <string name="action_verify">Verificar</string>
+    <string name="action_use_sensor">Usar sensor</string>
+    <string name="action_camera">Câmara</string>
+    <string name="action_gallery">Galeria</string>
+    <string name="action_finish_editing">Concluir edição</string>
+    <string name="field_name">Nome</string>
+    <string name="field_email">Email</string>
+    <string name="field_password">Password</string>
+
+    <!-- Erros comuns (reutilizados em vários ViewModels) -->
+    <string name="error_fill_fields">Preenche todos os campos</string>
+    <string name="error_invalid_email">Email inválido</string>
+    <string name="error_no_internet">Sem ligação à internet. Tenta novamente.</string>
+    <string name="error_no_internet_retry">Sem ligação à internet. Verifica a tua rede e tenta novamente.</string>
+    <string name="error_unexpected">Erro inesperado. Tenta novamente.</string>
+    <string name="error_passwords_dont_match">As passwords não coincidem</string>
+
+    <!-- Auth -->
+    <string name="auth_create_account">Criar conta</string>
+    <string name="auth_confirm_password">Confirmar Password</string>
+    <string name="auth_login_button">Login</string>
+    <string name="auth_register_button">Registar</string>
+    <string name="auth_have_account">Já tenho conta</string>
+
+    <!-- Home -->
+    <string name="home_title">Os meus treinos</string>
+    <string name="home_delete_workout_title">Apagar treino</string>
+    <string name="home_error_save_workout">Erro ao guardar treino. Tenta novamente.</string>
+    <string name="home_error_update_workout">Erro ao atualizar treino. Tenta novamente.</string>
+    <string name="home_error_duplicate_workout">Já tens um treino com o mesmo título, descrição e tipo. Escolhe uma combinação diferente.</string>
+    <string name="home_error_delete_workout">Erro ao apagar treino. Tenta novamente.</string>
+
+    <!-- Workout Form -->
+    <string name="workout_form_error_title_required">O título é obrigatório</string>
+    <string name="workout_form_error_type_required">Seleciona um tipo de treino</string>
+
+    <!-- Workout Screen -->
+    <string name="workout_title_fallback">Treino</string>
+    <string name="workout_not_found">Treino não encontrado</string>
+    <string name="workout_sets_count_suffix">séries</string>
+    <string name="workout_error_save_exercise">Erro ao guardar exercício. Tenta novamente.</string>
+    <string name="workout_error_duplicate_exercise">Este treino já tem um exercício com o mesmo nome. Escolhe um nome diferente.</string>
+    <string name="workout_error_update_exercise">Erro ao atualizar exercício. Tenta novamente.</string>
+    <string name="workout_error_delete_exercise">Erro ao apagar exercício. Tenta novamente.</string>
+
+    <!-- Exercise Screen -->
+    <string name="exercise_add_photo_title">Adicionar foto</string>
+    <string name="exercise_title_fallback">Exercício</string>
+    <string name="exercise_not_found">Exercício não encontrado</string>
+    <string name="exercise_machine_config_title">Configuração da Máquina</string>
+    <string name="exercise_machine_config_empty">Sem configurações definidas.</string>
+    <string name="exercise_angle_prefix">Ângulo: </string>
+    <string name="exercise_angle_unit">°</string>
+    <string name="exercise_edit_configs">Editar configurações</string>
+    <string name="field_description_optional">Descrição (opcional)</string>
+    <string name="exercise_verify_angle_title">Verificar ângulo</string>
+    <string name="exercise_sensor_unavailable">Sensor de inclinação não disponível neste dispositivo.</string>
+    <string name="exercise_angle_target_prefix">Alvo: </string>
+    <string name="exercise_angle_go_down">Baixa</string>
+    <string name="exercise_angle_go_up">Sobe</string>
+    <string name="exercise_target_summary_title">Objetivo desta série</string>
+    <string name="exercise_target_label">Meta</string>
+    <string name="exercise_target_empty">Sem meta definida.</string>
+    <string name="exercise_set_prefix">Série </string>
+    <string name="exercise_reps_suffix"> reps</string>
+    <string name="exercise_value_separator"> . </string>
+    <string name="exercise_kg_suffix">kg</string>
+    <string name="exercise_seconds_suffix">s</string>
+    <string name="exercise_last_time_label">Última vez</string>
+    <string name="exercise_no_previous_sessions">Sem sessões anteriores.</string>
+    <string name="exercise_session_prefix">Sessão de </string>
+    <string name="exercise_pr_label">PR (Recorde Pessoal)</string>
+    <string name="exercise_pr_empty">Adiciona a tua primeira série para veres os teus recordes aqui.</string>
+    <string name="exercise_pr_max_weight_prefix">Maior peso: </string>
+    <string name="exercise_pr_weight_reps_suffix"> × %1$d reps</string>
+    <string name="exercise_pr_max_reps_prefix">Mais reps: </string>
+    <string name="exercise_pr_max_time_prefix">Maior tempo: </string>
+    <string name="exercise_edit_target">Editar meta</string>
+    <string name="exercise_configure_preset">Configurar pré-definição</string>
+    <string name="exercise_edit_preset">Editar pré-definição</string>
+    <string name="exercise_field_reps">Repetições</string>
+    <string name="exercise_field_weight">Peso (kg)</string>
+    <string name="exercise_field_duration">Tempo (s)</string>
+    <string name="exercise_add_set">Adicionar série</string>
+    <string name="exercise_register_title">Registar Série</string>
+    <string name="exercise_sets_registered_prefix">Séries registadas: </string>
+    <string name="exercise_angle_field_label">Ângulo (°) — opcional</string>
+    <string name="exercise_angle_invalid">Ângulo inválido. Ex: 30 ou 30,5</string>
+    <string name="exercise_photos_section">Fotos</string>
+    <string name="content_desc_add_photo">Adicionar foto</string>
+    <string name="content_desc_exercise_photo">Foto do exercício</string>
+    <string name="content_desc_remove_photo">Remover foto</string>
+    <string name="exercise_photos_empty">Sem fotos. Toca em + para adicionar.</string>
+    <string name="content_desc_photo_index">Foto %1$d de %2$d</string>
+    <string name="photo_counter">%1$d / %2$d</string>
+
+    <!-- Exercise ViewModel — erros/validações -->
+    <string name="exercise_error_reps_positive">As repetições têm de ser maiores que 0</string>
+    <string name="exercise_error_weight_negative">O peso não pode ser negativo</string>
+    <string name="exercise_error_save_set">Erro ao guardar série. Tenta novamente.</string>
+    <string name="exercise_error_remove_set">Erro ao remover série. Tenta novamente.</string>
+    <string name="exercise_error_config_name_empty">O nome da configuração não pode estar vazio</string>
+    <string name="exercise_error_save_config">Erro ao guardar configuração. Tenta novamente.</string>
+    <string name="exercise_error_remove_config">Erro ao remover configuração. Tenta novamente.</string>
+    <string name="exercise_error_photo_too_large">Foto demasiado grande (%1$s MB). Máximo permitido: 10 MB.</string>
+    <string name="error_read_selected_file">Não foi possível ler o ficheiro selecionado</string>
+    <string name="error_api_with_code">Erro %1$d. Tenta novamente.</string>
+    <string name="exercise_error_save_photo">Erro ao guardar foto. Tenta novamente.</string>
+    <string name="exercise_error_remove_photo">Erro ao remover foto. Tenta novamente.</string>
+    <string name="exercise_error_record_set">Erro ao registar série. Tenta novamente.</string>
+    <string name="exercise_session_saved">Sessão guardada com sucesso!</string>
+    <string name="exercise_error_finalize_session">Erro ao finalizar sessão. Tenta novamente.</string>
+    <string name="exercise_error_need_one_set">Adiciona pelo menos uma série antes de finalizar</string>
+    <string name="exercise_error_clear_session">Erro ao limpar sessão. Tenta novamente.</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Perfil</string>
+    <string name="content_desc_edit_photo">Editar foto</string>
+    <string name="profile_section_info">Informação</string>
+    <string name="profile_field_name_label">Nome</string>
+    <string name="profile_field_email_label">Email</string>
+    <string name="profile_change_password">Alterar password</string>
+    <string name="profile_logout_button">Terminar Sessão</string>
+    <string name="profile_field_current_password">Password atual</string>
+    <string name="profile_field_new_password">Nova password</string>
+    <string name="profile_field_confirm_new_password">Confirmar nova password</string>
+    <string name="content_desc_edit_field_prefix">Editar </string>
+
+    <!-- Profile ViewModel — erros/validações -->
+    <string name="profile_error_name_empty">O nome não pode estar vazio</string>
+    <string name="profile_error_save_name">Erro ao guardar nome. Tenta novamente.</string>
+    <string name="profile_error_password_too_short">A nova password deve ter pelo menos 6 caracteres</string>
+    <string name="profile_error_password_same">A nova password não pode ser igual à atual</string>
+    <string name="profile_password_changed_success">Password alterada com sucesso!</string>
+    <string name="profile_error_change_password">Erro ao alterar password. Tenta novamente.</string>
+
+    <!-- Settings (Passo 10.1) -->
+    <string name="settings_title">Definições</string>
+    <string name="settings_section_appearance">Aparência</string>
+    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Escuro</string>
+    <string name="settings_section_language">Idioma</string>
+    <string name="settings_language_pt">Português</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_section_account">Conta</string>
+    <string name="settings_logout">Terminar sessão</string>
+    <string name="settings_section_sync">Sincronização</string>
+    <string name="settings_sync_pending_count">%1$d operações por sincronizar</string>
+    <string name="settings_sync_all_synced">Tudo sincronizado ✓</string>
+    <string name="settings_force_sync">Forçar sincronização</string>
+    <string name="settings_sync_running">A sincronizar…</string>
+    <string name="settings_sync_success">Sincronização concluída com sucesso!</string>
+    <string name="settings_sync_still_pending">Ainda restam %1$d operações por sincronizar. Verifica a tua ligação e tenta novamente.</string>
+    <string name="menu_settings">Definições</string>
+    <string name="menu_profile">Perfil</string>
+    <string name="menu_logout">Sair</string>
 </resources>

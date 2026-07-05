@@ -26,10 +26,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 
 @Composable
@@ -63,14 +65,14 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("MuscleUp", style = MaterialTheme.typography.displayLarge)
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displayLarge)
 
             Spacer(modifier = Modifier.height(32.dp))
 
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.field_email)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -80,7 +82,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.field_password)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth()
@@ -103,14 +105,14 @@ fun LoginScreen(
                     onClick = { viewModel.login(email, password) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Login")
+                    Text(stringResource(R.string.auth_login_button))
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             TextButton(onClick = { navController.navigate(Screen.Register.route) }) {
-                Text("Criar conta")
+                Text(stringResource(R.string.auth_create_account))
             }
         }
     }

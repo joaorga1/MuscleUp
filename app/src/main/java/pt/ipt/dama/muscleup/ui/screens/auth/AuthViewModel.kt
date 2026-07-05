@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.MuscleUpApp
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.data.local.upsertMirror
 import pt.ipt.dama.muscleup.data.remote.RetrofitClient
 import pt.ipt.dama.muscleup.data.remote.dto.AuthResponse
@@ -43,11 +44,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     fun login(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
-            _uiState.value = AuthUiState.Error("Preenche todos os campos")
+            _uiState.value = AuthUiState.Error(app.getString(R.string.error_fill_fields))
             return
         }
         if (!email.contains("@")) {
-            _uiState.value = AuthUiState.Error("Email inválido")
+            _uiState.value = AuthUiState.Error(app.getString(R.string.error_invalid_email))
             return
         }
         _uiState.value = AuthUiState.Loading
@@ -57,28 +58,28 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 if (response.isSuccessful && response.body() != null) {
                     onAuthSuccess(response.body()!!)
                 } else {
-                    val error = RetrofitClient.parseError(response)
+                    val error = RetrofitClient.parseError(response, app)
                     _uiState.value = AuthUiState.Error(error.message)
                 }
             } catch (_: IOException) {
-                _uiState.value = AuthUiState.Error("Sem ligação à internet. Verifica a tua rede e tenta novamente.")
+                _uiState.value = AuthUiState.Error(app.getString(R.string.error_no_internet_retry))
             } catch (_: Exception) {
-                _uiState.value = AuthUiState.Error("Erro inesperado. Tenta novamente.")
+                _uiState.value = AuthUiState.Error(app.getString(R.string.error_unexpected))
             }
         }
     }
 
     fun register(name: String, email: String, password: String, confirmPassword: String) {
         if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
-            _uiState.value = AuthUiState.Error("Preenche todos os campos")
+            _uiState.value = AuthUiState.Error(app.getString(R.string.error_fill_fields))
             return
         }
         if (!email.contains("@")) {
-            _uiState.value = AuthUiState.Error("Email inválido")
+            _uiState.value = AuthUiState.Error(app.getString(R.string.error_invalid_email))
             return
         }
         if (password != confirmPassword) {
-            _uiState.value = AuthUiState.Error("As passwords não coincidem")
+            _uiState.value = AuthUiState.Error(app.getString(R.string.error_passwords_dont_match))
             return
         }
         _uiState.value = AuthUiState.Loading
@@ -88,13 +89,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 if (response.isSuccessful && response.body() != null) {
                     onAuthSuccess(response.body()!!)
                 } else {
-                    val error = RetrofitClient.parseError(response)
+                    val error = RetrofitClient.parseError(response, app)
                     _uiState.value = AuthUiState.Error(error.message)
                 }
             } catch (_: IOException) {
-                _uiState.value = AuthUiState.Error("Sem ligação à internet. Verifica a tua rede e tenta novamente.")
+                _uiState.value = AuthUiState.Error(app.getString(R.string.error_no_internet_retry))
             } catch (_: Exception) {
-                _uiState.value = AuthUiState.Error("Erro inesperado. Tenta novamente.")
+                _uiState.value = AuthUiState.Error(app.getString(R.string.error_unexpected))
             }
         }
     }

@@ -1,6 +1,9 @@
 package pt.ipt.dama.muscleup
 
 import android.app.Application
+import android.content.Context
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -9,19 +12,45 @@ import pt.ipt.dama.muscleup.data.local.upsertMirror
 import pt.ipt.dama.muscleup.data.remote.ApiService
 import pt.ipt.dama.muscleup.data.remote.RetrofitClient
 import pt.ipt.dama.muscleup.data.remote.TokenManager
+import pt.ipt.dama.muscleup.data.session.LanguagePreferences
 import pt.ipt.dama.muscleup.data.session.SessionPreferences
+import pt.ipt.dama.muscleup.data.session.ThemePreferences
 import pt.ipt.dama.muscleup.data.session.UserSession
 import pt.ipt.dama.muscleup.data.sync.SyncManager
 import pt.ipt.dama.muscleup.data.sync.SyncScheduler
+import pt.ipt.dama.muscleup.ui.theme.ThemeState
 
-class MuscleUpApp : Application() {
+class MuscleUpApp : Application(), ImageLoaderFactory {
+
+    // Passo 10.1 (fix) — aplica o idioma escolhido pelo utilizador também ao contexto
+    // da Application, para as mensagens de erro dos ViewModels (que usam
+    // `getApplication<Application>().getString(...)`) respeitarem a escolha.
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(applyAppLocale(base))
+    }
+
+    /**
+     * Configura o ImageLoader singleton do Coil para usar o mesmo OkHttpClient (com
+     * AuthInterceptor) que o Retrofit — sem isto, pedidos de imagens à API (ex: fotos
+     * de perfil servidas pelo servidor) não enviam o header Authorization e a API
+     * recusa-os com 401, mostrando só o fundo de cor em vez da imagem.
+     */
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .okHttpClient { RetrofitClient.getOkHttpClient(tokenManager, this) }
+            .build()
+    }
 
     val database: AppDatabase by lazy { AppDatabase.getDatabase(this) }
     val sessionPreferences: SessionPreferences by lazy { SessionPreferences(this) }
 
+    // Passo 10.1 — preferência de tema (Sistema/Claro/Escuro) e idioma (PT/EN)
+    val themePreferences: ThemePreferences by lazy { ThemePreferences(this) }
+    val languagePreferences: LanguagePreferences by lazy { LanguagePreferences(this) }
+
     // Passo 8.1 — Camada de rede (API remota)
     val tokenManager: TokenManager by lazy { TokenManager(this) }
-    val apiService: ApiService by lazy { RetrofitClient.getApiService(tokenManager) }
+    val apiService: ApiService by lazy { RetrofitClient.getApiService(tokenManager, this) }
 
     // Passo 8.3 — Sincronização offline-first (fila outbox)
     val syncManager: SyncManager by lazy {
@@ -48,6 +77,7 @@ class MuscleUpApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        ThemeState.select(themePreferences.getSavedMode())
         restoreSessionIfValid()
     }
 

@@ -16,7 +16,9 @@ data class ExerciseSetDto(
 data class ExerciseSetRequest(
     val reps: Int,
     val weightKg: Double? = null,
-    val durationSeconds: Int? = null
+    val durationSeconds: Int? = null,
+    /** Ver comentário em [WorkoutRequest.clientId]. */
+    val clientId: String? = null
 )
 
 data class MachineConfigDto(
@@ -30,6 +32,8 @@ data class MachineConfigDto(
 data class MachineConfigRequest(
     val name: String,
     val description: String,
-    val angleDegrees: Double? = null
+    val angleDegrees: Double? = null,
+    /** Ver comentário em [WorkoutRequest.clientId]. */
+    val clientId: String? = null
 )
 

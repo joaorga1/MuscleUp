@@ -30,4 +30,21 @@ object SyncScheduler {
         WorkManager.getInstance(context)
             .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
     }
+
+    /**
+     * Força uma nova tentativa de sincronização AGORA, ignorando o backoff exponencial de
+     * qualquer tentativa anterior que ainda esteja "em espera" (ex: depois de várias falhas,
+     * o WorkManager pode só tentar de novo daqui a várias horas). Ao contrário de [requestSync]
+     * (que usa `KEEP` e não faz nada se já houver trabalho agendado), aqui usa-se `REPLACE`
+     * para cancelar essa espera e tentar imediatamente. Chamado pelo botão "Forçar
+     * sincronização" no ecrã de Definições.
+     */
+    fun forceSyncNow(context: Context) {
+        val request = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(context)
+            .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+    }
 }

@@ -1,0 +1,208 @@
+<resources>
+    <string name="app_name">MuscleUp</string>
+
+    <!-- Workout Types -->
+    <string name="workout_type_forca">Strength</string>
+    <string name="workout_type_hipertrofia">Hypertrophy</string>
+    <string name="workout_type_cardio">Cardio</string>
+    <string name="workout_type_mobilidade">Mobility</string>
+    <string name="workout_type_hiit">HIIT</string>
+    <string name="workout_type_full_body">Full Body</string>
+
+    <!-- Workout Form -->
+    <string name="workout_form_title_new">New workout</string>
+    <string name="workout_form_title_edit">Edit workout</string>
+    <string name="workout_form_field_title">Title</string>
+    <string name="workout_form_field_description">Description</string>
+    <string name="workout_form_field_type">Workout type</string>
+    <string name="workout_form_save">Save</string>
+
+    <!-- Exercise Form -->
+    <string name="exercise_form_title_new">New exercise</string>
+    <string name="exercise_form_title_edit">Edit exercise</string>
+    <string name="exercise_form_field_name">Name</string>
+    <string name="exercise_form_field_description">Description</string>
+    <string name="exercise_form_field_target_muscle">Target muscle</string>
+    <string name="exercise_form_save">Save</string>
+
+    <!-- Empty States -->
+    <string name="empty_workouts_title">You don\'t have any workouts yet</string>
+    <string name="empty_workouts_subtitle">Start by creating your first workout.\nTap the + button to take the first step!</string>
+    <string name="empty_exercises_title">You don\'t have any exercises yet</string>
+    <string name="empty_exercises_subtitle">Add exercises to your workout.\nTap the + button to get started.</string>
+
+    <!-- Common -->
+    <string name="content_desc_add">Add</string>
+    <string name="content_desc_edit">Edit</string>
+    <string name="content_desc_delete">Delete</string>
+    <string name="content_desc_back">Back</string>
+    <string name="content_desc_profile_photo">Profile photo</string>
+    <string name="delete_exercise_title">Delete exercise</string>
+    <string name="delete_exercise_message">Are you sure you want to delete \"%s\"?</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_add">Add</string>
+    <string name="action_close">Close</string>
+    <string name="action_finish">Finish</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_verify">Check</string>
+    <string name="action_use_sensor">Use sensor</string>
+    <string name="action_camera">Camera</string>
+    <string name="action_gallery">Gallery</string>
+    <string name="action_finish_editing">Done editing</string>
+    <string name="field_name">Name</string>
+    <string name="field_email">Email</string>
+    <string name="field_password">Password</string>
+
+    <!-- Common errors (reused across several ViewModels) -->
+    <string name="error_fill_fields">Fill in all fields</string>
+    <string name="error_invalid_email">Invalid email</string>
+    <string name="error_no_internet">No internet connection. Please try again.</string>
+    <string name="error_no_internet_retry">No internet connection. Check your network and try again.</string>
+    <string name="error_unexpected">Unexpected error. Please try again.</string>
+    <string name="error_passwords_dont_match">Passwords don\'t match</string>
+
+    <!-- Auth -->
+    <string name="auth_create_account">Create account</string>
+    <string name="auth_confirm_password">Confirm Password</string>
+    <string name="auth_login_button">Login</string>
+    <string name="auth_register_button">Register</string>
+    <string name="auth_have_account">I already have an account</string>
+
+    <!-- Home -->
+    <string name="home_title">My workouts</string>
+    <string name="home_delete_workout_title">Delete workout</string>
+    <string name="home_error_save_workout">Error saving workout. Please try again.</string>
+    <string name="home_error_update_workout">Error updating workout. Please try again.</string>
+    <string name="home_error_duplicate_workout">A workout with the same title, description and type already exists. Choose a different combination.</string>
+    <string name="home_error_delete_workout">Error deleting workout. Please try again.</string>
+
+    <!-- Workout Form -->
+    <string name="workout_form_error_title_required">Title is required</string>
+    <string name="workout_form_error_type_required">Select a workout type</string>
+
+    <!-- Workout Screen -->
+    <string name="workout_title_fallback">Workout</string>
+    <string name="workout_not_found">Workout not found</string>
+    <string name="workout_sets_count_suffix">sets</string>
+    <string name="workout_error_save_exercise">Error saving exercise. Please try again.</string>
+    <string name="workout_error_duplicate_exercise">This workout already has an exercise with the same name. Choose a different name.</string>
+    <string name="workout_error_update_exercise">Error updating exercise. Please try again.</string>
+    <string name="workout_error_delete_exercise">Error deleting exercise. Please try again.</string>
+
+    <!-- Exercise Screen -->
+    <string name="exercise_add_photo_title">Add photo</string>
+    <string name="exercise_title_fallback">Exercise</string>
+    <string name="exercise_not_found">Exercise not found</string>
+    <string name="exercise_machine_config_title">Machine Configuration</string>
+    <string name="exercise_machine_config_empty">No configurations defined.</string>
+    <string name="exercise_angle_prefix">Angle: </string>
+    <string name="exercise_angle_unit">°</string>
+    <string name="exercise_edit_configs">Edit configurations</string>
+    <string name="field_description_optional">Description (optional)</string>
+    <string name="exercise_verify_angle_title">Check angle</string>
+    <string name="exercise_sensor_unavailable">Inclination sensor not available on this device.</string>
+    <string name="exercise_angle_target_prefix">Target: </string>
+    <string name="exercise_angle_go_down">Lower</string>
+    <string name="exercise_angle_go_up">Raise</string>
+    <string name="exercise_target_summary_title">Goal for this set</string>
+    <string name="exercise_target_label">Target</string>
+    <string name="exercise_target_empty">No target defined.</string>
+    <string name="exercise_set_prefix">Set </string>
+    <string name="exercise_reps_suffix"> reps</string>
+    <string name="exercise_value_separator"> . </string>
+    <string name="exercise_kg_suffix">kg</string>
+    <string name="exercise_seconds_suffix">s</string>
+    <string name="exercise_last_time_label">Last time</string>
+    <string name="exercise_no_previous_sessions">No previous sessions.</string>
+    <string name="exercise_session_prefix">Session from </string>
+    <string name="exercise_pr_label">PR (Personal Record)</string>
+    <string name="exercise_pr_empty">Add your first set to see your records here.</string>
+    <string name="exercise_pr_max_weight_prefix">Heaviest weight: </string>
+    <string name="exercise_pr_weight_reps_suffix"> × %1$d reps</string>
+    <string name="exercise_pr_max_reps_prefix">Most reps: </string>
+    <string name="exercise_pr_max_time_prefix">Longest time: </string>
+    <string name="exercise_edit_target">Edit target</string>
+    <string name="exercise_configure_preset">Configure preset</string>
+    <string name="exercise_edit_preset">Edit preset</string>
+    <string name="exercise_field_reps">Reps</string>
+    <string name="exercise_field_weight">Weight (kg)</string>
+    <string name="exercise_field_duration">Time (s)</string>
+    <string name="exercise_add_set">Add set</string>
+    <string name="exercise_register_title">Record Set</string>
+    <string name="exercise_sets_registered_prefix">Sets recorded: </string>
+    <string name="exercise_angle_field_label">Angle (°) — optional</string>
+    <string name="exercise_angle_invalid">Invalid angle. E.g.: 30 or 30.5</string>
+    <string name="exercise_photos_section">Photos</string>
+    <string name="content_desc_add_photo">Add photo</string>
+    <string name="content_desc_exercise_photo">Exercise photo</string>
+    <string name="content_desc_remove_photo">Remove photo</string>
+    <string name="exercise_photos_empty">No photos. Tap + to add one.</string>
+    <string name="content_desc_photo_index">Photo %1$d of %2$d</string>
+    <string name="photo_counter">%1$d / %2$d</string>
+
+    <!-- Exercise ViewModel — errors/validation -->
+    <string name="exercise_error_reps_positive">Reps must be greater than 0</string>
+    <string name="exercise_error_weight_negative">Weight cannot be negative</string>
+    <string name="exercise_error_save_set">Error saving set. Please try again.</string>
+    <string name="exercise_error_remove_set">Error removing set. Please try again.</string>
+    <string name="exercise_error_config_name_empty">Configuration name cannot be empty</string>
+    <string name="exercise_error_save_config">Error saving configuration. Please try again.</string>
+    <string name="exercise_error_remove_config">Error removing configuration. Please try again.</string>
+    <string name="exercise_error_photo_too_large">Photo too large (%1$s MB). Maximum allowed: 10 MB.</string>
+    <string name="error_read_selected_file">Could not read the selected file</string>
+    <string name="error_api_with_code">Error %1$d. Please try again.</string>
+    <string name="exercise_error_save_photo">Error saving photo. Please try again.</string>
+    <string name="exercise_error_remove_photo">Error removing photo. Please try again.</string>
+    <string name="exercise_error_record_set">Error recording set. Please try again.</string>
+    <string name="exercise_session_saved">Session saved successfully!</string>
+    <string name="exercise_error_finalize_session">Error finishing session. Please try again.</string>
+    <string name="exercise_error_need_one_set">Add at least one set before finishing</string>
+    <string name="exercise_error_clear_session">Error clearing session. Please try again.</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Profile</string>
+    <string name="content_desc_edit_photo">Edit photo</string>
+    <string name="profile_section_info">Information</string>
+    <string name="profile_field_name_label">Name</string>
+    <string name="profile_field_email_label">Email</string>
+    <string name="profile_change_password">Change password</string>
+    <string name="profile_logout_button">Log Out</string>
+    <string name="profile_field_current_password">Current password</string>
+    <string name="profile_field_new_password">New password</string>
+    <string name="profile_field_confirm_new_password">Confirm new password</string>
+    <string name="content_desc_edit_field_prefix">Edit </string>
+
+    <!-- Profile ViewModel — errors/validation -->
+    <string name="profile_error_name_empty">Name cannot be empty</string>
+    <string name="profile_error_save_name">Error saving name. Please try again.</string>
+    <string name="profile_error_password_too_short">New password must be at least 6 characters</string>
+    <string name="profile_error_password_same">New password cannot be the same as the current one</string>
+    <string name="profile_password_changed_success">Password changed successfully!</string>
+    <string name="profile_error_change_password">Error changing password. Please try again.</string>
+
+    <!-- Settings (Passo 10.1) -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_section_language">Language</string>
+    <string name="settings_language_pt">Português</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_logout">Log out</string>
+    <string name="settings_section_sync">Sync</string>
+    <string name="settings_sync_pending_count">%1$d operations waiting to sync</string>
+    <string name="settings_sync_all_synced">All synced ✓</string>
+    <string name="settings_force_sync">Force sync</string>
+    <string name="settings_sync_running">Syncing…</string>
+    <string name="settings_sync_success">Sync completed successfully!</string>
+    <string name="settings_sync_still_pending">%1$d operations are still waiting to sync. Check your connection and try again.</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_profile">Profile</string>
+    <string name="menu_logout">Log out</string>
+</resources>
+

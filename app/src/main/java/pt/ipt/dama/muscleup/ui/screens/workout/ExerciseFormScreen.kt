@@ -11,8 +11,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +46,10 @@ fun ExerciseFormScreen(
     else
         stringResource(R.string.exercise_form_title_new)
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) { viewModel.uiEvent.collect { snackbarHostState.showSnackbar(it) } }
+    LaunchedEffect(Unit) { viewModel.navigateBack.collect { navController.popBackStack() } }
+
     Scaffold(
         topBar = {
             AppTopBar(
@@ -50,7 +57,8 @@ fun ExerciseFormScreen(
                 showBackButton = true,
                 onBackClick = { navController.popBackStack() }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -89,7 +97,7 @@ fun ExerciseFormScreen(
                     } else {
                         viewModel.addExercise(name, description, targetMuscle)
                     }
-                    navController.popBackStack()
+                    // navegação feita pelo LaunchedEffect que reage a navigateBack
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = name.isNotBlank() && targetMuscle.isNotBlank()

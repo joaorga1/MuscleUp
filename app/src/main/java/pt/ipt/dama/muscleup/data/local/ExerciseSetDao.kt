@@ -21,6 +21,10 @@ interface ExerciseSetDao {
     @Query("SELECT * FROM exercise_sets WHERE remoteId = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): ExerciseSetEntity?
 
+    /** Devolve todos os remoteIds não nulos do exercise — usado no pull para verificar duplicados com uma só query. */
+    @Query("SELECT remoteId FROM exercise_sets WHERE exerciseId = :exerciseId AND remoteId IS NOT NULL")
+    suspend fun getAllRemoteIdsForExercise(exerciseId: String): List<String>
+
     @Query("UPDATE exercise_sets SET remoteId = :remoteId WHERE id = :id")
     suspend fun updateRemoteId(id: String, remoteId: String)
 

@@ -74,6 +74,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.stringResource
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.model.Exercise
 import pt.ipt.dama.muscleup.model.ExercisePhoto
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
@@ -156,13 +158,13 @@ fun ExerciseScreen(
     if (showPhotoDialog) {
         AlertDialog(
             onDismissRequest = { showPhotoDialog = false },
-            title = { Text("Adicionar foto") },
+            title = { Text(stringResource(R.string.exercise_add_photo_title)) },
             text = {
                 Column {
                     TextButton(
                         onClick = { showPhotoDialog = false; launchCamera() },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Câmara") }
+                    ) { Text(stringResource(R.string.action_camera)) }
                     TextButton(
                         onClick = {
                             showPhotoDialog = false
@@ -171,12 +173,12 @@ fun ExerciseScreen(
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Galeria") }
+                    ) { Text(stringResource(R.string.action_gallery)) }
                 }
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showPhotoDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { showPhotoDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -193,13 +195,14 @@ fun ExerciseScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = exercise?.name ?: "Exercício",
+                title = exercise?.name ?: stringResource(R.string.exercise_title_fallback),
                 showBackButton = true,
                 onBackClick = { navController.popBackStack() },
                 showAvatar = true,
                 userName = viewModel.userName,
                 profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
+                onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onLogoutClick = onLogout
             )
         },
@@ -210,15 +213,15 @@ fun ExerciseScreen(
                         navController.navigate(Screen.ExerciseForm.edit(workoutId, exercise!!.id))
                     }
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = "Editar exercício")
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.content_desc_edit))
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState, modifier = Modifier.imePadding()) }
     ) { innerPadding ->
         if (exercise == null) {
             Text(
-                text = "Exercício não encontrado",
+                text = stringResource(R.string.exercise_not_found),
                 modifier = Modifier.padding(innerPadding).padding(16.dp)
             )
         } else {
@@ -324,9 +327,9 @@ fun MachineConfigSection(
     val hasDescriptionOrAngle = descriptionInput.trim().isNotBlank() || angleValue != null
     val isFormValid = nameInput.trim().isNotBlank() && hasDescriptionOrAngle && !hasInvalidAngle
 
-    SectionCard(title = "Configuração da Máquina") {
+    SectionCard(title = stringResource(R.string.exercise_machine_config_title)) {
         if (exercise.machineConfigs.isEmpty()) {
-            Text("Sem configurações definidas.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.exercise_machine_config_empty), style = MaterialTheme.typography.bodySmall)
         } else {
             exercise.machineConfigs.forEach { config ->
                 Row(
@@ -341,17 +344,17 @@ fun MachineConfigSection(
                         }
                         config.angleDegrees?.let { angle ->
                             Text(
-                                text = "Ângulo: ${"%.1f".format(angle)}°",
+                                text = stringResource(R.string.exercise_angle_prefix) + "%.1f".format(angle) + stringResource(R.string.exercise_angle_unit),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
                     if (config.angleDegrees != null) {
-                        TextButton(onClick = { checkingConfigId = config.id }) { Text("Verificar") }
+                        TextButton(onClick = { checkingConfigId = config.id }) { Text(stringResource(R.string.action_verify)) }
                     }
                     if (isEditing) {
-                        TextButton(onClick = { onRemoveConfig(config.id) }) { Text("Remover") }
+                        TextButton(onClick = { onRemoveConfig(config.id) }) { Text(stringResource(R.string.action_remove)) }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -360,20 +363,20 @@ fun MachineConfigSection(
 
         if (!isEditing) {
             TextButton(onClick = { isEditing = true }) {
-                Text("Editar configurações")
+                Text(stringResource(R.string.exercise_edit_configs))
             }
         } else {
             OutlinedTextField(
                 value = nameInput,
                 onValueChange = { nameInput = it },
-                label = { Text("Nome") },
+                label = { Text(stringResource(R.string.field_name)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = descriptionInput,
                 onValueChange = { descriptionInput = it },
-                label = { Text("Descrição (opcional)") },
+                label = { Text(stringResource(R.string.field_description_optional)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -399,7 +402,7 @@ fun MachineConfigSection(
                     enabled = isFormValid,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Adicionar")
+                    Text(stringResource(R.string.action_add))
                 }
                 TextButton(
                     onClick = {
@@ -410,7 +413,7 @@ fun MachineConfigSection(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Concluir edição")
+                    Text(stringResource(R.string.action_finish_editing))
                 }
             }
         }
@@ -458,7 +461,7 @@ fun AngleCheckDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Verificar ângulo", textAlign = TextAlign.Center)
+                Text(stringResource(R.string.exercise_verify_angle_title), textAlign = TextAlign.Center)
                 Text(
                     text = configName,
                     style = MaterialTheme.typography.bodyMedium,
@@ -468,28 +471,28 @@ fun AngleCheckDialog(
         },
         text = {
             if (!inclinometerViewModel.isSensorAvailable) {
-                Text("Sensor de inclinação não disponível neste dispositivo.")
+                Text(stringResource(R.string.exercise_sensor_unavailable))
             } else {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Alvo: ${"%.1f".format(targetAngle)}°",
+                        text = stringResource(R.string.exercise_angle_target_prefix) + "%.1f".format(targetAngle) + stringResource(R.string.exercise_angle_unit),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${"%.1f".format(liveAngle)}°",
+                        text = "%.1f".format(liveAngle) + stringResource(R.string.exercise_angle_unit),
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Bold,
                         color = angleColor
                     )
                     if (!withinTolerance) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        val direction = if (diff > 0) "Baixa" else "Sobe"
+                        val direction = if (diff > 0) stringResource(R.string.exercise_angle_go_down) else stringResource(R.string.exercise_angle_go_up)
                         Text(
-                            text = "$direction ${"%.1f".format(abs(diff))}°",
+                            text = "$direction " + "%.1f".format(abs(diff)) + stringResource(R.string.exercise_angle_unit),
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center
@@ -499,7 +502,7 @@ fun AngleCheckDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fechar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
         }
     )
 }
@@ -537,11 +540,11 @@ fun TargetSummarySection(
     val formatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val lastSession = historySessions.firstOrNull()
 
-    SectionCard(title = "Objetivo desta série") {
-        Text("Meta", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+    SectionCard(title = stringResource(R.string.exercise_target_summary_title)) {
+        Text(stringResource(R.string.exercise_target_label), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(4.dp))
         if (exercise.sets.isEmpty()) {
-            Text("Sem meta definida.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.exercise_target_empty), style = MaterialTheme.typography.bodySmall)
         } else {
             exercise.sets.forEachIndexed { index, set ->
                 Row(
@@ -551,14 +554,16 @@ fun TargetSummarySection(
                 ) {
                     Text(
                         text = buildString {
-                            append("Série ${index + 1}: ${set.reps} reps")
-                            if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
-                            if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
+                            append(stringResource(R.string.exercise_set_prefix))
+                            append("${index + 1}: ${set.reps}")
+                            append(stringResource(R.string.exercise_reps_suffix))
+                            if (set.weightKg > 0f) append(stringResource(R.string.exercise_value_separator) + "${set.weightKg}" + stringResource(R.string.exercise_kg_suffix))
+                            if (set.durationSeconds > 0) append(stringResource(R.string.exercise_value_separator) + "${set.durationSeconds}" + stringResource(R.string.exercise_seconds_suffix))
                         },
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (isEditing) {
-                        TextButton(onClick = { onRemovePredefinedSet(set.id) }) { Text("Remover") }
+                        TextButton(onClick = { onRemovePredefinedSet(set.id) }) { Text(stringResource(R.string.action_remove)) }
                     }
                 }
             }
@@ -568,20 +573,22 @@ fun TargetSummarySection(
         HorizontalDivider()
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("Última vez", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.exercise_last_time_label), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(4.dp))
         if (lastSession == null) {
-            Text("Sem sessões anteriores.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.exercise_no_previous_sessions), style = MaterialTheme.typography.bodySmall)
         } else {
             val label = lastSession.finishedAt?.let { formatter.format(Date(it)) } ?: "-"
-            Text("Sessão de $label", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.exercise_session_prefix) + label, style = MaterialTheme.typography.bodySmall)
             Spacer(modifier = Modifier.height(4.dp))
             lastSession.sets.sortedBy { it.setOrder }.forEach { set ->
                 Text(
                     text = buildString {
-                        append("Série ${set.setOrder}: ${set.reps} reps")
-                        if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
-                        if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
+                        append(stringResource(R.string.exercise_set_prefix))
+                        append("${set.setOrder}: ${set.reps}")
+                        append(stringResource(R.string.exercise_reps_suffix))
+                        if (set.weightKg > 0f) append(stringResource(R.string.exercise_value_separator) + "${set.weightKg}" + stringResource(R.string.exercise_kg_suffix))
+                        if (set.durationSeconds > 0) append(stringResource(R.string.exercise_value_separator) + "${set.durationSeconds}" + stringResource(R.string.exercise_seconds_suffix))
                     },
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -592,7 +599,7 @@ fun TargetSummarySection(
         HorizontalDivider()
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("PR (Recorde Pessoal)", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.exercise_pr_label), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(4.dp))
 
         val hasAnyRecord = personalRecord.maxWeightKg != null ||
@@ -601,25 +608,25 @@ fun TargetSummarySection(
 
         if (!hasAnyRecord) {
             Text(
-                text = "Adiciona a tua primeira série para veres os teus recordes aqui.",
+                text = stringResource(R.string.exercise_pr_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             // Maior peso (com ou sem reps associadas)
             personalRecord.maxWeightKg?.let { weight ->
-                val repsLabel = personalRecord.maxWeightReps?.let { " × $it reps" }.orEmpty()
-                Text("Maior peso: ${weight}kg$repsLabel", style = MaterialTheme.typography.bodyMedium)
+                val repsLabel = personalRecord.maxWeightReps?.let { stringResource(R.string.exercise_pr_weight_reps_suffix, it) }.orEmpty()
+                Text(stringResource(R.string.exercise_pr_max_weight_prefix) + "${weight}" + stringResource(R.string.exercise_kg_suffix) + repsLabel, style = MaterialTheme.typography.bodyMedium)
             }
             // Mais reps — só mostra se não há PR de peso (exercício de peso corporal puro)
             if (personalRecord.maxWeightKg == null) {
                 personalRecord.maxReps?.let { maxReps ->
-                    Text("Mais reps: $maxReps reps", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.exercise_pr_max_reps_prefix) + "$maxReps" + stringResource(R.string.exercise_reps_suffix), style = MaterialTheme.typography.bodyMedium)
                 }
             }
             // Maior duração (pranchas, cardio, etc.)
             personalRecord.maxDurationSeconds?.let { duration ->
-                Text("Maior tempo: ${duration}s", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.exercise_pr_max_time_prefix) + "$duration" + stringResource(R.string.exercise_seconds_suffix), style = MaterialTheme.typography.bodyMedium)
             }
         }
 
@@ -627,11 +634,11 @@ fun TargetSummarySection(
 
         if (!isEditing) {
             TextButton(onClick = { isEditing = true }) {
-                Text("Editar meta")
+                Text(stringResource(R.string.exercise_edit_target))
             }
         } else {
             Text(
-                text = if (exercise.sets.isEmpty()) "Configurar pré-definição" else "Editar pré-definição",
+                text = if (exercise.sets.isEmpty()) stringResource(R.string.exercise_configure_preset) else stringResource(R.string.exercise_edit_preset),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold
             )
@@ -639,7 +646,7 @@ fun TargetSummarySection(
             OutlinedTextField(
                 value = repsInput,
                 onValueChange = { repsInput = it },
-                label = { Text("Repetições") },
+                label = { Text(stringResource(R.string.exercise_field_reps)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -647,7 +654,7 @@ fun TargetSummarySection(
             OutlinedTextField(
                 value = weightInput,
                 onValueChange = { weightInput = it },
-                label = { Text("Peso (kg)") },
+                label = { Text(stringResource(R.string.exercise_field_weight)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -655,7 +662,7 @@ fun TargetSummarySection(
             OutlinedTextField(
                 value = timeInput,
                 onValueChange = { timeInput = it },
-                label = { Text("Tempo (s)") },
+                label = { Text(stringResource(R.string.exercise_field_duration)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -674,7 +681,7 @@ fun TargetSummarySection(
                     enabled = isFormValid,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Adicionar série")
+                    Text(stringResource(R.string.exercise_add_set))
                 }
                 TextButton(
                     onClick = {
@@ -685,7 +692,7 @@ fun TargetSummarySection(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Concluir edição")
+                    Text(stringResource(R.string.action_finish_editing))
                 }
             }
         }
@@ -716,11 +723,11 @@ fun RegisterSetSection(
     // Reps apenas (ex: elevações em barra) é válido — peso e duração são opcionais
     val isFormValid = reps > 0 && !hasInvalidWeight && !hasInvalidTime
 
-    SectionCard(title = "Registar Série") {
+    SectionCard(title = stringResource(R.string.exercise_register_title)) {
         OutlinedTextField(
             value = repsInput,
             onValueChange = { repsInput = it },
-            label = { Text("Repetições") },
+            label = { Text(stringResource(R.string.exercise_field_reps)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
@@ -730,7 +737,7 @@ fun RegisterSetSection(
         OutlinedTextField(
             value = weightInput,
             onValueChange = { weightInput = it },
-            label = { Text("Peso (kg)") },
+            label = { Text(stringResource(R.string.exercise_field_weight)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
         )
@@ -740,7 +747,7 @@ fun RegisterSetSection(
         OutlinedTextField(
             value = timeInput,
             onValueChange = { timeInput = it },
-            label = { Text("Tempo (s)") },
+            label = { Text(stringResource(R.string.exercise_field_duration)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
@@ -757,11 +764,11 @@ fun RegisterSetSection(
             enabled = isFormValid,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Adicionar série")
+            Text(stringResource(R.string.exercise_add_set))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Séries registadas: ${currentSessionSets.size}")
+        Text(stringResource(R.string.exercise_sets_registered_prefix) + currentSessionSets.size)
         Spacer(modifier = Modifier.height(8.dp))
 
         currentSessionSets.forEach { set ->
@@ -772,14 +779,16 @@ fun RegisterSetSection(
             ) {
                 Text(
                     text = buildString {
-                        append("Série ${set.setOrder}: ${set.reps} reps")
-                        if (set.weightKg > 0f) append(" . ${set.weightKg}kg")
-                        if (set.durationSeconds > 0) append(" . ${set.durationSeconds}s")
+                        append(stringResource(R.string.exercise_set_prefix))
+                        append("${set.setOrder}: ${set.reps}")
+                        append(stringResource(R.string.exercise_reps_suffix))
+                        if (set.weightKg > 0f) append(stringResource(R.string.exercise_value_separator) + "${set.weightKg}" + stringResource(R.string.exercise_kg_suffix))
+                        if (set.durationSeconds > 0) append(stringResource(R.string.exercise_value_separator) + "${set.durationSeconds}" + stringResource(R.string.exercise_seconds_suffix))
                     }
                 )
 
                 TextButton(onClick = { onRemoveSet(set.id) }) {
-                    Text("Remover")
+                    Text(stringResource(R.string.action_remove))
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
@@ -795,13 +804,13 @@ fun RegisterSetSection(
                     onClick = onFinalize,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Finalizar")
+                    Text(stringResource(R.string.action_finish))
                 }
                 TextButton(
                     onClick = onClear,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Limpar")
+                    Text(stringResource(R.string.action_clear))
                 }
             }
         }
@@ -831,16 +840,16 @@ fun AngleInputField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text("Ângulo (°) — opcional") },
+        label = { Text(stringResource(R.string.exercise_angle_field_label)) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         isError = isError,
         supportingText = if (isError) {
-            { Text("Ângulo inválido. Ex: 30 ou 30,5") }
+            { Text(stringResource(R.string.exercise_angle_invalid)) }
         } else null,
         trailingIcon = if (inclinometerViewModel.isSensorAvailable) {
             {
                 TextButton(onClick = { onValueChange("%.1f".format(Locale.US, liveAngle)) }) {
-                    Text("Usar sensor")
+                    Text(stringResource(R.string.action_use_sensor))
                 }
             }
         } else null,
@@ -862,7 +871,7 @@ fun ExercisePhotoGallery(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(
-            text = "Fotos",
+            text = stringResource(R.string.exercise_photos_section),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold
         )
@@ -880,7 +889,7 @@ fun ExercisePhotoGallery(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Adicionar foto",
+                        contentDescription = stringResource(R.string.content_desc_add_photo),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -890,7 +899,7 @@ fun ExercisePhotoGallery(
                 Box(modifier = Modifier.size(84.dp)) {
                     AsyncImage(
                         model = photo.uri.toUri(),
-                        contentDescription = "Foto do exercício",
+                        contentDescription = stringResource(R.string.content_desc_exercise_photo),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .fillMaxSize()
@@ -908,7 +917,7 @@ fun ExercisePhotoGallery(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Remover foto",
+                            contentDescription = stringResource(R.string.content_desc_remove_photo),
                             tint = Color.White,
                             modifier = Modifier.size(14.dp)
                         )
@@ -920,7 +929,7 @@ fun ExercisePhotoGallery(
         if (photos.isEmpty()) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Sem fotos. Toca em + para adicionar.",
+                text = stringResource(R.string.exercise_photos_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -957,7 +966,7 @@ fun PhotoViewerDialog(
             ) { page ->
                 AsyncImage(
                     model = photos[page].uri.toUri(),
-                    contentDescription = "Foto ${page + 1} de ${photos.size}",
+                    contentDescription = stringResource(R.string.content_desc_photo_index, page + 1, photos.size),
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxSize()
@@ -968,7 +977,7 @@ fun PhotoViewerDialog(
             // Contador "X / N" no canto superior esquerdo
             if (photos.size > 1) {
                 Text(
-                    text = "${pagerState.currentPage + 1} / ${photos.size}",
+                    text = stringResource(R.string.photo_counter, pagerState.currentPage + 1, photos.size),
                     color = Color.White,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier
@@ -991,7 +1000,7 @@ fun PhotoViewerDialog(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Fechar",
+                    contentDescription = stringResource(R.string.action_close),
                     tint = Color.White
                 )
             }

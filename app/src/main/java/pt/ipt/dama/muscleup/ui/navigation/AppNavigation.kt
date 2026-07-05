@@ -27,6 +27,7 @@ import pt.ipt.dama.muscleup.ui.screens.home.HomeScreen
 import pt.ipt.dama.muscleup.ui.screens.home.HomeViewModel
 import pt.ipt.dama.muscleup.ui.screens.home.WorkoutFormScreen
 import pt.ipt.dama.muscleup.ui.screens.profile.ProfileScreen
+import pt.ipt.dama.muscleup.ui.screens.settings.SettingsScreen
 import pt.ipt.dama.muscleup.ui.screens.workout.ExerciseFormScreen
 import pt.ipt.dama.muscleup.ui.screens.workout.WorkoutScreen
 import pt.ipt.dama.muscleup.ui.screens.workout.WorkoutViewModel
@@ -50,6 +51,9 @@ sealed class Screen(val route: String) {
         fun go(exerciseId: String) = "exercise/$exerciseId"
     }
     object Profile  : Screen("profile")
+
+    // Passo 10.1 — Definições (tema, idioma, logout)
+    object Settings : Screen("settings")
 }
 
 @Composable
@@ -167,5 +171,6 @@ fun AppNavigation(
             ExerciseScreen(navController = navController, viewModel = exerciseViewModel, onLogout = handleLogout)
         }
         composable(Screen.Profile.route)  { ProfileScreen(navController, handleLogout) }
+        composable(Screen.Settings.route) { SettingsScreen(navController, handleLogout) }
     }
 }

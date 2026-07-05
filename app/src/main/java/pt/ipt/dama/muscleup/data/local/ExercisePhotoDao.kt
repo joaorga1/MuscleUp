@@ -24,6 +24,10 @@ interface ExercisePhotoDao {
     @Query("SELECT * FROM exercise_photos WHERE remoteId = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): ExercisePhotoEntity?
 
+    /** Devolve todos os remoteIds não nulos do exercise — usado no pull para verificar duplicados com uma só query. */
+    @Query("SELECT remoteId FROM exercise_photos WHERE exerciseId = :exerciseId AND remoteId IS NOT NULL")
+    suspend fun getAllRemoteIdsForExercise(exerciseId: String): List<String>
+
     @Query("UPDATE exercise_photos SET remoteId = :remoteId WHERE id = :id")
     suspend fun updateRemoteId(id: String, remoteId: String)
 

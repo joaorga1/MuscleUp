@@ -2,6 +2,7 @@
 
 import android.content.Context
 import androidx.core.content.edit
+import android.util.Log
 import com.auth0.android.jwt.JWT
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -16,7 +17,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.Route
 import pt.ipt.dama.muscleup.data.remote.dto.RefreshResponse
+import pt.ipt.dama.muscleup.data.session.LanguagePreferences
 import java.util.concurrent.TimeUnit
+
+private const val TAG = "TokenAuth"
+
 
 // ── Auth State ────────────────────────────────────────────────────────────────────────────────────
 /**
@@ -69,7 +74,7 @@ class TokenManager(context: Context) {
  * para evitar recursão. Partilhado entre [AuthInterceptor] (renovação proativa) e
  * [TokenAuthenticator] (fallback reativo após 401).
  */
-class TokenRefresher(private val baseUrl: String) {
+class TokenRefresher(private val baseUrl: String, private val context: Context) {
     private val gson          = Gson()
     private val refreshClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -93,18 +98,32 @@ class TokenRefresher(private val baseUrl: String) {
         // Sem refreshToken = sessão já foi limpa (logout manual ou 1.ª execução).
         // Não disparar forceLogout aqui — não há sessão ativa para expirar.
         val refreshToken = tokenManager.getRefreshToken() ?: return null
+        return doRefresh(refreshToken, tokenManager, isRetry = false)
+    }
+
+    private fun doRefresh(refreshToken: String, tokenManager: TokenManager, isRetry: Boolean): String? {
         return try {
             val body = gson.toJson(mapOf("refreshToken" to refreshToken))
                 .toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
                 .url(baseUrl.trimEnd('/') + "/api/auth/refresh")
+                .header("Accept-Language", LanguagePreferences(context).getEffectiveLanguage())
                 .post(body)
                 .build()
             refreshClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    // ÚNICO sítio onde se dispara forceLogout:
-                    // o servidor recusou explicitamente o refreshToken (sessão verdadeiramente expirada).
+                    val errorBody = try { response.body.string() } catch (_: Exception) { "" }
+                    Log.w(TAG, "Refresh falhou (code=${response.code}, retry=$isRetry): $errorBody")
+                    // O servidor recusou explicitamente o refreshToken (401/403).
+                    // Antes de forçar logout, tentamos UMA vez mais após um pequeno delay:
+                    // isto evita falsos positivos quando o backend está a reiniciar
+                    // (ex: nodemon em dev) ou houve uma falha transitória do servidor.
                     if (response.code == 401 || response.code == 403) {
+                        if (!isRetry) {
+                            Thread.sleep(1500)
+                            return doRefresh(refreshToken, tokenManager, isRetry = true)
+                        }
+                        Log.w(TAG, "Refresh rejeitado após retry — a forçar logout.")
                         tokenManager.clear()
                         AuthStateManager.triggerForceLogout()
                     }
@@ -112,10 +131,12 @@ class TokenRefresher(private val baseUrl: String) {
                 }
                 val newToken = gson.fromJson(response.body.string(), RefreshResponse::class.java).accessToken
                 tokenManager.updateAccessToken(newToken)
+                Log.d(TAG, "AccessToken renovado com sucesso.")
                 newToken
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Erro de rede (sem ligação, timeout, etc.) — não apaga a sessão.
+            Log.w(TAG, "Refresh falhou por exceção de rede: ${e.message}")
             null
         }
     }

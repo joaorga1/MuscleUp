@@ -69,13 +69,14 @@ fun WorkoutScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = workout?.title ?: "Treino",
+                title = workout?.title ?: stringResource(R.string.workout_title_fallback),
                 showBackButton = true,
                 onBackClick = { navController.popBackStack() },
                 showAvatar = true,
                 userName = viewModel.userName,
                 profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
+                onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onLogoutClick = onLogout
             )
         },
@@ -98,7 +99,7 @@ fun WorkoutScreen(
     ) { innerPadding ->
         if (workout == null) {
             Text(
-                text = "Treino não encontrado",
+                text = stringResource(R.string.workout_not_found),
                 modifier = Modifier.padding(innerPadding).padding(16.dp)
             )
         } else {
@@ -239,7 +240,7 @@ fun ExerciseCard(exercise: Exercise, onClick: () -> Unit = {}) {
             )
             if (exercise.sets.isNotEmpty()) {
                 Text(
-                    text = "${exercise.sets.size} séries",
+                    text = "${exercise.sets.size} " + stringResource(R.string.workout_sets_count_suffix),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp)
                 )

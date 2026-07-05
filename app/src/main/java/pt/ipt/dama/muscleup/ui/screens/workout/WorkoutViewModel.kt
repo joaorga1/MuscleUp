@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.MuscleUpApp
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.data.local.AppDatabase
 import pt.ipt.dama.muscleup.data.local.ExerciseEntity
 import pt.ipt.dama.muscleup.data.local.toModel
@@ -60,10 +61,17 @@ class WorkoutViewModel(
     private val _uiEvent = MutableSharedFlow<String>()
     val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
 
+    private val _navigateBack = MutableSharedFlow<Unit>()
+    val navigateBack: SharedFlow<Unit> = _navigateBack.asSharedFlow()
+
     fun addExercise(name: String, description: String, targetMuscle: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
+                if (exerciseDao.isDuplicate(workoutId, null, name.trim())) {
+                    _uiEvent.emit(app.getString(R.string.workout_error_duplicate_exercise))
+                    return@launch
+                }
                 val entity = ExerciseEntity(
                     id = UUID.randomUUID().toString(),
                     workoutId = workoutId,
@@ -72,11 +80,11 @@ class WorkoutViewModel(
                     targetMuscle = targetMuscle.trim()
                 )
                 exerciseDao.insert(entity)
-                // Passo 8.3 — grava local primeiro (instantâneo), sincroniza com a API a seguir.
                 app.syncManager.onExerciseCreated(entity)
                 app.triggerSync()
+                _navigateBack.emit(Unit)
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao guardar exercício. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.workout_error_save_exercise))
             }
         }
     }
@@ -85,6 +93,10 @@ class WorkoutViewModel(
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
             try {
+                if (exerciseDao.isDuplicate(workoutId, exerciseId, name.trim())) {
+                    _uiEvent.emit(app.getString(R.string.workout_error_duplicate_exercise))
+                    return@launch
+                }
                 // Preserva o remoteId já atribuído (senão o próximo sync trataria isto como um novo exercise).
                 val existingRemoteId = exerciseDao.getByIdOnce(exerciseId)?.remoteId
                 val entity = ExerciseEntity(
@@ -98,8 +110,9 @@ class WorkoutViewModel(
                 exerciseDao.update(entity)
                 app.syncManager.onExerciseUpdated(entity)
                 app.triggerSync()
+                _navigateBack.emit(Unit)
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao atualizar exercício. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.workout_error_update_exercise))
             }
         }
     }
@@ -115,7 +128,7 @@ class WorkoutViewModel(
                     app.triggerSync()
                 }
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao apagar exercício. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.workout_error_delete_exercise))
             }
         }
     }

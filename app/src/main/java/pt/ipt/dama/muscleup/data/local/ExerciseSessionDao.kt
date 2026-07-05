@@ -46,6 +46,10 @@ interface ExerciseSessionDao {
     @Query("SELECT * FROM exercise_sessions WHERE remoteId = :remoteId LIMIT 1")
     suspend fun getSessionByRemoteId(remoteId: String): ExerciseSessionEntity?
 
+    /** Devolve todos os remoteIds de sessões não nulos do exercise — usado no pull para verificar duplicados com uma só query. */
+    @Query("SELECT remoteId FROM exercise_sessions WHERE exerciseId = :exerciseId AND remoteId IS NOT NULL")
+    suspend fun getAllSessionRemoteIdsForExercise(exerciseId: String): List<String>
+
     @Query("UPDATE exercise_sessions SET remoteId = :remoteId WHERE id = :id")
     suspend fun updateSessionRemoteId(id: String, remoteId: String)
 
@@ -54,6 +58,14 @@ interface ExerciseSessionDao {
 
     @Query("SELECT * FROM session_exercise_sets WHERE remoteId = :remoteId LIMIT 1")
     suspend fun getSetByRemoteId(remoteId: String): SessionExerciseSetEntity?
+
+    /** Devolve todos os remoteIds de sets não nulos do exercise — usado no pull para verificar duplicados com uma só query. */
+    @Query("""
+        SELECT ss.remoteId FROM session_exercise_sets ss
+        INNER JOIN exercise_sessions s ON s.id = ss.sessionId
+        WHERE s.exerciseId = :exerciseId AND ss.remoteId IS NOT NULL
+    """)
+    suspend fun getAllSetRemoteIdsForExercise(exerciseId: String): List<String>
 
     @Query("UPDATE session_exercise_sets SET remoteId = :remoteId WHERE id = :id")
     suspend fun updateSetRemoteId(id: String, remoteId: String)

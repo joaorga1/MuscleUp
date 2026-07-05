@@ -18,7 +18,13 @@ data class WorkoutDto(
 data class WorkoutRequest(
     val title: String,
     val description: String,
-    val type: String
+    val type: String,
+    // Passo 8.3 (proposta) — UUID gerado localmente (Room) no momento da criação, enviado à API
+    // para servir de chave de idempotência (evita duplicados se o pedido for reenviado após
+    // um "sucesso" que nunca chegou ao telemóvel) e, no futuro, para a API resolver o "pai"
+    // de uma entidade filha sem depender do remoteId já ter sido sincronizado. Campo adicional
+    // e opcional — não quebra a API atual, que o vai simplesmente ignorar até ser adotado.
+    val clientId: String? = null
 )
 
 data class ExerciseSummaryDto(
@@ -41,7 +47,9 @@ data class ExerciseDto(
 data class ExerciseRequest(
     val name: String,
     val description: String,
-    val targetMuscle: String
+    val targetMuscle: String,
+    /** Ver comentário em [WorkoutRequest.clientId]. */
+    val clientId: String? = null
 )
 
 

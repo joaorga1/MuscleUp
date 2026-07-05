@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.MuscleUpApp
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.data.local.AppDatabase
 import pt.ipt.dama.muscleup.data.local.WorkoutEntity
 import pt.ipt.dama.muscleup.data.local.toModel
@@ -48,6 +49,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiEvent = MutableSharedFlow<String>()
     val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
+
+    private val _navigateBack = MutableSharedFlow<Unit>()
+    val navigateBack: SharedFlow<Unit> = _navigateBack.asSharedFlow()
 
     init {
         observeWorkoutsForCurrentUser()
@@ -87,6 +91,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (userId.isNotBlank()) {
             viewModelScope.launch {
                 try {
+                    if (workoutDao.isDuplicate(userId, null, title.trim(), description.trim(), type.name)) {
+                        _uiEvent.emit(app.getString(R.string.home_error_duplicate_workout))
+                        return@launch
+                    }
                     val entity = WorkoutEntity(
                         id = UUID.randomUUID().toString(),
                         userId = userId,
@@ -95,11 +103,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         type = type.name
                     )
                     workoutDao.insert(entity)
-                    // Passo 8.3 — grava local primeiro (instantâneo), sincroniza com a API a seguir.
                     app.syncManager.onWorkoutCreated(entity)
                     app.triggerSync()
+                    _navigateBack.emit(Unit)
                 } catch (_: Exception) {
-                    _uiEvent.emit("Erro ao guardar treino. Tenta novamente.")
+                    _uiEvent.emit(app.getString(R.string.home_error_save_workout))
                 }
             }
         }
@@ -111,7 +119,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (userId.isNotBlank()) {
             viewModelScope.launch {
                 try {
-                    // Preserva o remoteId já atribuído (senão o próximo sync trataria isto como um novo workout).
+                    if (workoutDao.isDuplicate(userId, id, title.trim(), description.trim(), type.name)) {
+                        _uiEvent.emit(app.getString(R.string.home_error_duplicate_workout))
+                        return@launch
+                    }
                     val existingRemoteId = workoutDao.getByIdOnce(id)?.remoteId
                     val entity = WorkoutEntity(
                         id = id,
@@ -124,8 +135,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     workoutDao.update(entity)
                     app.syncManager.onWorkoutUpdated(entity)
                     app.triggerSync()
+                    _navigateBack.emit(Unit)
                 } catch (_: Exception) {
-                    _uiEvent.emit("Erro ao atualizar treino. Tenta novamente.")
+                    _uiEvent.emit(app.getString(R.string.home_error_update_workout))
                 }
             }
         }
@@ -142,7 +154,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     app.triggerSync()
                 }
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao apagar treino. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.home_error_delete_workout))
             }
         }
     }

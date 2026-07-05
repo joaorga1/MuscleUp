@@ -17,8 +17,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +54,10 @@ fun WorkoutFormScreen(
     var selectedType by remember { mutableStateOf<WorkoutType?>(existing?.type) }
     var titleError by remember { mutableStateOf(false) }
     var typeError by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) { viewModel.uiEvent.collect { snackbarHostState.showSnackbar(it) } }
+    LaunchedEffect(Unit) { viewModel.navigateBack.collect { navController.popBackStack() } }
 
     val screenTitle = if (isEditing)
         stringResource(R.string.workout_form_title_edit)
@@ -66,7 +73,8 @@ fun WorkoutFormScreen(
                 showBackButton = true,
                 onBackClick = { navController.popBackStack() }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState, modifier = Modifier.imePadding()) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -82,7 +90,7 @@ fun WorkoutFormScreen(
                 onValueChange = { title = it; titleError = false },
                 label = { Text(stringResource(R.string.workout_form_field_title)) },
                 isError = titleError,
-                supportingText = { if (titleError) Text("O título é obrigatório") },
+                supportingText = { if (titleError) Text(stringResource(R.string.workout_form_error_title_required)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
@@ -121,7 +129,7 @@ fun WorkoutFormScreen(
 
             if (typeError) {
                 Text(
-                    text = "Seleciona um tipo de treino",
+                    text = stringResource(R.string.workout_form_error_type_required),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -139,7 +147,7 @@ fun WorkoutFormScreen(
                         } else {
                             viewModel.addWorkout(title.trim(), description.trim(), selectedType!!)
                         }
-                        navController.popBackStack()
+                        // navegação feita pelo LaunchedEffect que reage a navigateBack
                     }
                 },
                 modifier = Modifier.fillMaxWidth()

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.MuscleUpApp
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.data.local.AppDatabase
 import pt.ipt.dama.muscleup.data.local.ExercisePhotoEntity
 import pt.ipt.dama.muscleup.data.local.ExerciseSetEntity
@@ -158,11 +159,11 @@ class ExerciseViewModel(
 
     fun addPredefinedSet(reps: Int, weightKg: Float?, durationSeconds: Int?) {
         if (reps <= 0) {
-            viewModelScope.launch { _uiEvent.emit("As repetições têm de ser maiores que 0") }
+            viewModelScope.launch { _uiEvent.emit(getApplication<Application>().getString(R.string.exercise_error_reps_positive)) }
             return
         }
         if (weightKg != null && weightKg < 0f) {
-            viewModelScope.launch { _uiEvent.emit("O peso não pode ser negativo") }
+            viewModelScope.launch { _uiEvent.emit(getApplication<Application>().getString(R.string.exercise_error_weight_negative)) }
             return
         }
         val app = getApplication<MuscleUpApp>()
@@ -182,7 +183,7 @@ class ExerciseViewModel(
                 app.syncManager.onExerciseSetCreated(entity)
                 app.triggerSync()
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao guardar série. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_save_set))
             }
         }
     }
@@ -198,14 +199,14 @@ class ExerciseViewModel(
                     app.triggerSync()
                 }
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao remover série. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_remove_set))
             }
         }
     }
 
     fun addMachineConfig(name: String, description: String, angleDegrees: Float? = null) {
         if (name.isBlank()) {
-            viewModelScope.launch { _uiEvent.emit("O nome da configuração não pode estar vazio") }
+            viewModelScope.launch { _uiEvent.emit(getApplication<Application>().getString(R.string.exercise_error_config_name_empty)) }
             return
         }
         val app = getApplication<MuscleUpApp>()
@@ -223,7 +224,7 @@ class ExerciseViewModel(
                 app.syncManager.onMachineConfigCreated(entity)
                 app.triggerSync()
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao guardar configuração. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_save_config))
             }
         }
     }
@@ -239,7 +240,7 @@ class ExerciseViewModel(
                     app.triggerSync()
                 }
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao remover configuração. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_remove_config))
             }
         }
     }
@@ -260,7 +261,7 @@ class ExerciseViewModel(
                 val maxBytes = 10L * 1024 * 1024 // 10 MB
                 if (fileSizeBytes > maxBytes) {
                     val sizeMb = "%.1f".format(fileSizeBytes / (1024.0 * 1024.0))
-                    _uiEvent.emit("Foto demasiado grande (${sizeMb} MB). Máximo permitido: 10 MB.")
+                    _uiEvent.emit(app.getString(R.string.exercise_error_photo_too_large, sizeMb))
                     return@launch
                 }
 
@@ -274,7 +275,7 @@ class ExerciseViewModel(
                 app.syncManager.onPhotoCreated(entity)
                 app.triggerSync()
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao guardar foto. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_save_photo))
             }
         }
     }
@@ -291,7 +292,7 @@ class ExerciseViewModel(
                     app.triggerSync()
                 }
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao remover foto. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_remove_photo))
             }
         }
     }
@@ -312,11 +313,11 @@ class ExerciseViewModel(
 
     fun addRecordedSet(reps: Int, weightKg: Float?, durationSeconds: Int?) {
         if (reps <= 0) {
-            viewModelScope.launch { _uiEvent.emit("As repetições têm de ser maiores que 0") }
+            viewModelScope.launch { _uiEvent.emit(getApplication<Application>().getString(R.string.exercise_error_reps_positive)) }
             return
         }
         if (weightKg != null && weightKg < 0f) {
-            viewModelScope.launch { _uiEvent.emit("O peso não pode ser negativo") }
+            viewModelScope.launch { _uiEvent.emit(getApplication<Application>().getString(R.string.exercise_error_weight_negative)) }
             return
         }
         val app = getApplication<MuscleUpApp>()
@@ -340,7 +341,7 @@ class ExerciseViewModel(
                 Log.d(TAG, "Set added: reps=$reps, weight=${weightKg ?: 0f}kg, time=${durationSeconds ?: 0}s, order=$setOrder")
             } catch (e: Exception) {
                 Log.e(TAG, "Error adding recorded set: ${e.message}", e)
-                _uiEvent.emit("Erro ao registar série. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_record_set))
             }
         }
     }
@@ -357,7 +358,7 @@ class ExerciseViewModel(
                     app.triggerSync()
                 }
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao remover série. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_remove_set))
             }
         }
     }
@@ -373,13 +374,13 @@ class ExerciseViewModel(
                     resetCurrentSessionState()
                     app.syncManager.onSessionFinalized(exerciseId, sessionId)
                     app.triggerSync()
-                    _uiEvent.emit("Sessão guardada com sucesso!")
+                    _uiEvent.emit(app.getString(R.string.exercise_session_saved))
                 } catch (e: Exception) {
                     Log.e(TAG, "Error finalizing session: ${e.message}", e)
-                    _uiEvent.emit("Erro ao finalizar sessão. Tenta novamente.")
+                    _uiEvent.emit(app.getString(R.string.exercise_error_finalize_session))
                 }
             } else {
-                _uiEvent.emit("Adiciona pelo menos uma série antes de finalizar")
+                _uiEvent.emit(app.getString(R.string.exercise_error_need_one_set))
             }
         }
     }
@@ -396,7 +397,7 @@ class ExerciseViewModel(
                     app.triggerSync()
                 }
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao limpar sessão. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_clear_session))
             }
         }
     }

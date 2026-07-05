@@ -3,6 +3,7 @@ package pt.ipt.dama.muscleup.data.local
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PendingSyncDao {
@@ -24,5 +25,9 @@ interface PendingSyncDao {
 
     @Query("UPDATE pending_sync SET attempts = attempts + 1 WHERE id = :id")
     suspend fun incrementAttempts(id: Long)
+
+    /** Nº de operações ainda por sincronizar — usado no ecrã de Definições para dar visibilidade ao utilizador. */
+    @Query("SELECT COUNT(*) FROM pending_sync")
+    fun observeCount(): Flow<Int>
 }
 

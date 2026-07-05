@@ -74,11 +74,12 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Os meus treinos",
+                title = stringResource(R.string.home_title),
                 showAvatar = true,
                 userName = userName,
                 profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
+                onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onLogoutClick = onLogout
             )
         },
@@ -153,19 +154,19 @@ fun HomeScreen(
         workoutToDelete?.let { workout ->
             AlertDialog(
                 onDismissRequest = { workoutToDelete = null },
-                title = { Text("Apagar treino") },
-                text = { Text("Tens a certeza que queres apagar \"${workout.title}\"?") },
+                title = { Text(stringResource(R.string.home_delete_workout_title)) },
+                text = { Text(stringResource(R.string.delete_exercise_message, workout.title)) },
                 confirmButton = {
                     TextButton(onClick = {
                         viewModel.deleteWorkout(workout.id)
                         workoutToDelete = null
                     }) {
-                        Text("Apagar", color = Color.Red)
+                        Text(stringResource(R.string.action_delete), color = Color.Red)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { workoutToDelete = null }) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )

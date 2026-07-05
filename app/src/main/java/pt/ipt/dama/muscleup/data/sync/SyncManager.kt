@@ -374,16 +374,70 @@ class SyncManager(
         return true
     }
 
+    /**
+     * Botão "Forçar sincronização" (Definições): tenta esvaziar a fila pendente AGORA, em vez
+     * de esperar pelo agendamento normal do WorkManager (que, depois de várias falhas seguidas,
+     * pode só voltar a tentar daqui a várias horas por causa do backoff exponencial).
+     *
+     * Corre [syncPending] várias vezes seguidas — cada chamada processa a fila até à primeira
+     * operação que falhar, por isso repetir resolve num só toque situações em que uma operação
+     * "órfã" bloqueava tudo o que vinha a seguir (o descarte de uma opera na passagem N desbloqueia
+     * a seguinte só na passagem N+1). Pára cedo se uma passagem não fizer progresso nenhum
+     * (ex: sem rede), para não ficar preso num ciclo inútil.
+     *
+     * Devolve o nº de operações que ainda ficam por sincronizar no fim (0 = sucesso total).
+     */
+    suspend fun forcePushNow(maxAttempts: Int = 10): Int {
+        var remaining = pendingSyncDao.getAll().size
+        var attempts = 0
+        while (attempts < maxAttempts && remaining > 0) {
+            attempts++
+            val before = remaining
+            val finished = try {
+                syncPending()
+            } catch (_: Exception) {
+                false
+            }
+            remaining = pendingSyncDao.getAll().size
+            if (finished || remaining >= before) break // concluído, ou não progrediu (sem rede/erro persistente)
+        }
+        return remaining
+    }
+
     /** Verifica se a API está acessível com um pedido leve ao endpoint de health. */
     private suspend fun isApiReachable(): Boolean = try {
         apiService.checkHealth().isSuccessful
     } catch (_: Exception) { false }
 
+    /**
+     * Lança a exceção certa quando uma op depende do remoteId de uma entidade pai que ainda
+     * não o tem:
+     * - Se ainda existe um CREATE pendente para o pai na fila, é só uma questão de ordem/tempo
+     *   → exceção transiente normal, a fila pára e tenta novamente mais logo.
+     * - Se **não** há nenhum CREATE pendente para o pai, é porque o pai já foi processado e
+     *   rejeitado permanentemente pelo servidor (ou nunca chegou a ser enfileirado) — o
+     *   remoteId **nunca** vai aparecer, por isso insistir aqui bloquearia a fila para sempre.
+     *   Neste caso descarta-se esta op (via [PermanentSyncException]); na próxima passagem os
+     *   filhos desta entidade são descartados pela mesma razão — a "orfandade" propaga-se e
+     *   resolve-se sozinha em, no máximo, tantas passagens quantos os níveis da hierarquia.
+     */
+    private suspend fun throwMissingParent(parentType: String, parentLocalId: String, parentLabel: String): Nothing {
+        val parentStillPending = pendingSyncDao.getAllFor(parentLocalId, parentType).any { it.operation == "CREATE" }
+        if (parentStillPending) {
+            throw IOException("$parentLabel pai ainda sem remoteId — tenta novamente depois")
+        }
+        throw PermanentSyncException(
+            "$parentLabel pai nunca foi criado na API (rejeitado ou já removido) — a descartar esta operação"
+        )
+    }
+
     private suspend fun syncWorkoutOp(op: PendingSyncEntity) {
         val payload = gson.fromJson(op.payloadJson, WorkoutSyncPayload::class.java)
         when (op.operation) {
             "CREATE" -> {
-                val response = apiService.createWorkout(WorkoutRequest(payload.title, payload.description, payload.type))
+                val response = apiService.createWorkout(
+                    WorkoutRequest(payload.title, payload.description, payload.type, clientId = op.localId)
+                )
                 response.throwIfFailed("createWorkout")
                 response.body()?.id?.let { remoteId -> workoutDao.updateRemoteId(op.localId, remoteId) }
             }
@@ -406,10 +460,10 @@ class SyncManager(
         when (op.operation) {
             "CREATE" -> {
                 val remoteWorkoutId = workoutDao.getByIdOnce(payload.workoutId)?.remoteId
-                    ?: throw Exception("Workout pai ainda sem remoteId — tenta novamente depois")
+                    ?: throwMissingParent(TYPE_WORKOUT, payload.workoutId, "Workout")
                 val response = apiService.createExercise(
                     remoteWorkoutId,
-                    ExerciseRequest(payload.name, payload.description, payload.targetMuscle)
+                    ExerciseRequest(payload.name, payload.description, payload.targetMuscle, clientId = op.localId)
                 )
                 response.throwIfFailed("createExercise")
                 response.body()?.id?.let { remoteId -> exerciseDao.updateRemoteId(op.localId, remoteId) }
@@ -436,10 +490,10 @@ class SyncManager(
         when (op.operation) {
             "CREATE" -> {
                 val remoteExerciseId = exerciseDao.getByIdOnce(payload.exerciseId)?.remoteId
-                    ?: throw Exception("Exercise pai ainda sem remoteId — tenta novamente depois")
+                    ?: throwMissingParent(TYPE_EXERCISE, payload.exerciseId, "Exercise")
                 val response = apiService.addExerciseSet(
                     remoteExerciseId,
-                    ExerciseSetRequest(payload.reps, payload.weightKg.toDouble(), payload.durationSeconds)
+                    ExerciseSetRequest(payload.reps, payload.weightKg.toDouble(), payload.durationSeconds, clientId = op.localId)
                 )
                 response.throwIfFailed("addExerciseSet")
                 response.body()?.id?.let { remoteId -> exerciseSetDao.updateRemoteId(op.localId, remoteId) }
@@ -457,10 +511,10 @@ class SyncManager(
         when (op.operation) {
             "CREATE" -> {
                 val remoteExerciseId = exerciseDao.getByIdOnce(payload.exerciseId)?.remoteId
-                    ?: throw Exception("Exercise pai ainda sem remoteId — tenta novamente depois")
+                    ?: throwMissingParent(TYPE_EXERCISE, payload.exerciseId, "Exercise")
                 val response = apiService.addMachineConfig(
                     remoteExerciseId,
-                    MachineConfigRequest(payload.name, payload.description, payload.angleDegrees?.toDouble())
+                    MachineConfigRequest(payload.name, payload.description, payload.angleDegrees?.toDouble(), clientId = op.localId)
                 )
                 response.throwIfFailed("addMachineConfig")
                 response.body()?.id?.let { remoteId -> machineConfigDao.updateRemoteId(op.localId, remoteId) }
@@ -478,7 +532,7 @@ class SyncManager(
         when (op.operation) {
             "CREATE" -> {
                 val remoteExerciseId = exerciseDao.getByIdOnce(payload.exerciseId)?.remoteId
-                    ?: throw Exception("Exercise pai ainda sem remoteId — tenta novamente depois")
+                    ?: throwMissingParent(TYPE_EXERCISE, payload.exerciseId, "Exercise")
                 val part = try {
                     uriToMultipart(appContext, payload.localUri.toUri(), "photo")
                 } catch (e: Exception) {
@@ -502,7 +556,7 @@ class SyncManager(
         when (op.operation) {
             "CREATE" -> {
                 val remoteExerciseId = exerciseDao.getByIdOnce(payload.exerciseId)?.remoteId
-                    ?: throw Exception("Exercise pai ainda sem remoteId — tenta novamente depois")
+                    ?: throwMissingParent(TYPE_EXERCISE, payload.exerciseId, "Exercise")
                 val response = apiService.addRecordedSet(
                     remoteExerciseId,
                     SessionSetRequest(payload.reps, payload.weightKg.toDouble(), payload.durationSeconds)
@@ -525,7 +579,7 @@ class SyncManager(
         when (op.operation) {
             "FINALIZE" -> {
                 val remoteExerciseId = exerciseDao.getByIdOnce(payload.exerciseId)?.remoteId
-                    ?: throw Exception("Exercise pai ainda sem remoteId — tenta novamente depois")
+                    ?: throwMissingParent(TYPE_EXERCISE, payload.exerciseId, "Exercise")
                 val response = apiService.finalizeSession(remoteExerciseId)
                 if (!response.isSuccessful && response.code() != 404) response.throwIfFailed("finalizeSession")
             }
@@ -560,9 +614,10 @@ class SyncManager(
             val response = apiService.getWorkouts()
             if (!response.isSuccessful) return
             val remoteWorkouts = response.body().orEmpty()
+            // Uma só query ao Room para obter todos os remoteIds existentes
+            val existingRemoteIds = workoutDao.getAllRemoteIds().toHashSet()
             for (remote in remoteWorkouts) {
-                val existing = workoutDao.getByRemoteId(remote.id)
-                if (existing == null) {
+                if (remote.id !in existingRemoteIds) {
                     workoutDao.insert(
                         WorkoutEntity(
                             id = UUID.randomUUID().toString(),
@@ -587,9 +642,10 @@ class SyncManager(
             val response = apiService.getExercises(remoteWorkoutId)
             if (!response.isSuccessful) return
             val remoteExercises = response.body().orEmpty()
+            // Uma só query ao Room para obter todos os remoteIds de exercises deste workout
+            val existingRemoteIds = exerciseDao.getAllRemoteIdsForWorkout(localWorkoutId).toHashSet()
             for (remote in remoteExercises) {
-                val existing = exerciseDao.getByRemoteId(remote.id)
-                if (existing == null) {
+                if (remote.id !in existingRemoteIds) {
                     exerciseDao.insert(
                         ExerciseEntity(
                             id = UUID.randomUUID().toString(),
@@ -614,9 +670,10 @@ class SyncManager(
             val response = apiService.getExerciseSets(remoteExerciseId)
             if (!response.isSuccessful) return
             val remoteSets = response.body().orEmpty()
+            // Uma só query ao Room para obter todos os remoteIds de sets deste exercise
+            val existingRemoteIds = exerciseSetDao.getAllRemoteIdsForExercise(localExerciseId).toHashSet()
             for (remote in remoteSets) {
-                val existing = exerciseSetDao.getByRemoteId(remote.id)
-                if (existing == null) {
+                if (remote.id !in existingRemoteIds) {
                     exerciseSetDao.insert(
                         ExerciseSetEntity(
                             id = UUID.randomUUID().toString(),
@@ -643,9 +700,10 @@ class SyncManager(
             val response = apiService.getMachineConfigs(remoteExerciseId)
             if (!response.isSuccessful) return
             val remoteConfigs = response.body().orEmpty()
+            // Uma só query ao Room para obter todos os remoteIds de machine configs deste exercise
+            val existingRemoteIds = machineConfigDao.getAllRemoteIdsForExercise(localExerciseId).toHashSet()
             for (remote in remoteConfigs) {
-                val existing = machineConfigDao.getByRemoteId(remote.id)
-                if (existing == null) {
+                if (remote.id !in existingRemoteIds) {
                     machineConfigDao.insert(
                         MachineConfigEntity(
                             id = UUID.randomUUID().toString(),
@@ -671,9 +729,10 @@ class SyncManager(
             val response = apiService.getExercisePhotos(remoteExerciseId)
             if (!response.isSuccessful) return
             val remotePhotos = response.body().orEmpty()
+            // Uma só query ao Room para obter todos os remoteIds de fotos deste exercise
+            val existingRemoteIds = exercisePhotoDao.getAllRemoteIdsForExercise(localExerciseId).toHashSet()
             for (remote in remotePhotos) {
-                val existing = exercisePhotoDao.getByRemoteId(remote.id)
-                if (existing == null) {
+                if (remote.id !in existingRemoteIds) {
                     exercisePhotoDao.insert(
                         ExercisePhotoEntity(
                             id = UUID.randomUUID().toString(),
@@ -697,13 +756,15 @@ class SyncManager(
             val response = apiService.getSessionHistory(remoteExerciseId)
             if (!response.isSuccessful) return
             val remoteSessions = response.body().orEmpty()
+            // Duas queries ao Room para obter todos os remoteIds existentes de sessões e sets deste exercise
+            val existingSessionIds = exerciseSessionDao.getAllSessionRemoteIdsForExercise(localExerciseId).toHashSet()
+            val existingSetIds = exerciseSessionDao.getAllSetRemoteIdsForExercise(localExerciseId).toHashSet()
             for (remote in remoteSessions) {
-                val existingSession = exerciseSessionDao.getSessionByRemoteId(remote.id)
-                val localSessionId = existingSession?.id ?: UUID.randomUUID().toString()
-                if (existingSession == null) {
+                val localSessionId = if (remote.id !in existingSessionIds) {
+                    val newId = UUID.randomUUID().toString()
                     exerciseSessionDao.insertSession(
                         ExerciseSessionEntity(
-                            id = localSessionId,
+                            id = newId,
                             exerciseId = localExerciseId,
                             userId = localUserId,
                             createdAt = parseIsoDateOrNow(remote.createdAt),
@@ -712,10 +773,12 @@ class SyncManager(
                             remoteId = remote.id
                         )
                     )
+                    newId
+                } else {
+                    exerciseSessionDao.getSessionByRemoteId(remote.id)?.id ?: continue
                 }
                 remote.sets.orEmpty().forEach { remoteSet ->
-                    val existingSet = exerciseSessionDao.getSetByRemoteId(remoteSet.id)
-                    if (existingSet == null) {
+                    if (remoteSet.id !in existingSetIds) {
                         exerciseSessionDao.insertSessionSet(
                             SessionExerciseSetEntity(
                                 id = UUID.randomUUID().toString(),

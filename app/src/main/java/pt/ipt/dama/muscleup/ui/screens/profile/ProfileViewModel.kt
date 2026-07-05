@@ -15,8 +15,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import pt.ipt.dama.muscleup.MuscleUpApp
+import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.data.local.upsertMirror
 import pt.ipt.dama.muscleup.data.remote.uriToMultipart
+import pt.ipt.dama.muscleup.data.remote.PhotoTooLargeException
 import pt.ipt.dama.muscleup.data.remote.RetrofitClient
 import pt.ipt.dama.muscleup.data.remote.dto.ChangePasswordRequest
 import pt.ipt.dama.muscleup.data.remote.dto.UpdateNameRequest
@@ -79,22 +81,32 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun saveProfilePhoto(uriString: String) {
         viewModelScope.launch {
+            // Passo separado: erros de leitura/validação do ficheiro local (tamanho, etc.)
+            // já vêm localizados de uriToMultipart e não devem ser confundidos com "sem internet".
+            val context = getApplication<Application>()
+            val part = try {
+                uriToMultipart(context, uriString.toUri(), "photo")
+            } catch (e: PhotoTooLargeException) {
+                _uiEvent.emit(e.message ?: app.getString(R.string.exercise_error_save_photo))
+                return@launch
+            } catch (_: Exception) {
+                _uiEvent.emit(app.getString(R.string.error_read_selected_file))
+                return@launch
+            }
             try {
-                val context = getApplication<Application>()
-                val part = uriToMultipart(context, uriString.toUri(), "photo")
                 val response = apiService.uploadProfilePhoto(part)
                 if (response.isSuccessful && response.body() != null) {
                     val newUri = response.body()!!.profilePhotoUri
                     _profilePhotoUri.value = newUri
                     userDao.upsertMirror(userName, userEmail, newUri)
                 } else {
-                    val error = RetrofitClient.parseError(response)
+                    val error = RetrofitClient.parseError(response, app)
                     _uiEvent.emit(error.message)
                 }
             } catch (_: IOException) {
-                _uiEvent.emit("Sem ligação à internet. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.error_no_internet))
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao guardar foto. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_save_photo))
             }
         }
     }
@@ -107,13 +119,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     _profilePhotoUri.value = null
                     userDao.upsertMirror(userName, userEmail, null)
                 } else {
-                    val error = RetrofitClient.parseError(response)
+                    val error = RetrofitClient.parseError(response, app)
                     _uiEvent.emit(error.message)
                 }
             } catch (_: IOException) {
-                _uiEvent.emit("Sem ligação à internet. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.error_no_internet))
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao remover foto. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.exercise_error_remove_photo))
             }
         }
     }
@@ -126,7 +138,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun saveName(newName: String) {
         val trimmed = newName.trim()
         if (trimmed.isBlank()) {
-            viewModelScope.launch { _uiEvent.emit("O nome não pode estar vazio") }
+            viewModelScope.launch { _uiEvent.emit(app.getString(R.string.profile_error_name_empty)) }
             return
         }
         viewModelScope.launch {
@@ -138,13 +150,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     sessionPreferences.save(email = user.email, name = user.name)
                     userDao.upsertMirror(user.name, user.email, user.profilePhotoUri)
                 } else {
-                    val error = RetrofitClient.parseError(response)
+                    val error = RetrofitClient.parseError(response, app)
                     _uiEvent.emit(error.message)
                 }
             } catch (_: IOException) {
-                _uiEvent.emit("Sem ligação à internet. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.error_no_internet))
             } catch (_: Exception) {
-                _uiEvent.emit("Erro ao guardar nome. Tenta novamente.")
+                _uiEvent.emit(app.getString(R.string.profile_error_save_name))
             }
         }
     }
@@ -154,13 +166,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             _passwordDialogError.value = null
             when {
                 currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank() ->
-                    _passwordDialogError.value = "Preenche todos os campos"
+                    _passwordDialogError.value = app.getString(R.string.error_fill_fields)
                 newPassword.length < 6 ->
-                    _passwordDialogError.value = "A nova password deve ter pelo menos 6 caracteres"
+                    _passwordDialogError.value = app.getString(R.string.profile_error_password_too_short)
                 newPassword == currentPassword ->
-                    _passwordDialogError.value = "A nova password não pode ser igual à atual"
+                    _passwordDialogError.value = app.getString(R.string.profile_error_password_same)
                 newPassword != confirmPassword ->
-                    _passwordDialogError.value = "As passwords não coincidem"
+                    _passwordDialogError.value = app.getString(R.string.error_passwords_dont_match)
                 else -> {
                     try {
                         val response = apiService.changePassword(
@@ -168,15 +180,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         )
                         if (response.isSuccessful) {
                             _passwordSuccess.emit(Unit)
-                            _uiEvent.emit(response.body()?.message ?: "Password alterada com sucesso!")
+                            _uiEvent.emit(response.body()?.message ?: app.getString(R.string.profile_password_changed_success))
                         } else {
-                            val error = RetrofitClient.parseError(response)
+                            val error = RetrofitClient.parseError(response, app)
                             _passwordDialogError.value = error.message
                         }
                     } catch (_: IOException) {
-                        _passwordDialogError.value = "Sem ligação à internet. Tenta novamente."
+                        _passwordDialogError.value = app.getString(R.string.error_no_internet)
                     } catch (_: Exception) {
-                        _passwordDialogError.value = "Erro ao alterar password. Tenta novamente."
+                        _passwordDialogError.value = app.getString(R.string.profile_error_change_password)
                     }
                 }
             }
