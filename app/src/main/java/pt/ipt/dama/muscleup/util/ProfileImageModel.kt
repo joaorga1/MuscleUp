@@ -6,15 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
 /**
- * A API devolve a foto de perfil como uma "data URI" em base64
- * (ex: "data:image/jpeg;base64,/9j/4AAQ..."), enquanto outras origens
- * (ex: cache antiga ou uploads locais) podem gerar um caminho/URI de
- * ficheiro "normal" (file://, content://, http(s)://).
- *
- * O Coil não sabe carregar strings "data:" diretamente, por isso é
- * preciso descodificar o base64 para um Bitmap antes de o passar
- * ao AsyncImage. Para os outros formatos, a própria string serve de
- * modelo (Coil já sabe tratar file/content/http).
+ * A API devolve a fotografia de perfil como uma data URI em base64, enquanto outras origens, como uma cache antiga
+ * ou envios locais, podem gerar um caminho ou URI de ficheiro normal e por isso é preciso garantir que o AsyncImage do Coil consegue lidar com ambos os casos.
  */
 fun toImageModel(uriOrDataUrl: String?): Any? {
     if (uriOrDataUrl.isNullOrBlank()) return null
@@ -33,10 +26,7 @@ fun toImageModel(uriOrDataUrl: String?): Any? {
     return uriOrDataUrl
 }
 
-/**
- * Versão "remember" para usar diretamente em Composables, evitando
- * descodificar o base64 em cada recomposição.
- */
+/** Versão com remember para evitar recomputações a cada recomposição. */
 @Composable
 fun rememberImageModel(uriOrDataUrl: String?): Any? =
     remember(uriOrDataUrl) { toImageModel(uriOrDataUrl) }

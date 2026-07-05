@@ -12,14 +12,26 @@ import pt.ipt.dama.muscleup.ui.theme.MuscleUpTheme
 import pt.ipt.dama.muscleup.ui.theme.ThemeMode
 import pt.ipt.dama.muscleup.ui.theme.ThemeState
 
+/**
+ * Atividade principal e único ponto de entrada da interface da aplicação.
+ *
+ * Define o destino inicial de navegação consoante exista ou não uma sessão válida
+ * guardada e aplica o tema (claro, escuro ou seguir o sistema) escolhido pelo utilizador.
+ */
 class MainActivity : ComponentActivity() {
 
-    // Passo 10.1 (fix) — aplica o idioma escolhido pelo utilizador antes de qualquer
-    // recurso ser resolvido nesta Activity (ver LocaleUtils.kt).
+    /**
+     * Aplica o idioma escolhido pelo utilizador antes de qualquer recurso ser resolvido
+     * nesta Activity, para que os textos apresentados já respeitem essa escolha.
+     */
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(applyAppLocale(newBase))
     }
 
+    /**
+     * Inicializa a interface, decidindo o ecrã inicial (sessão ativa ou login)
+     * e configurando o tema visual da aplicação.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -32,8 +44,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            // Passo 10.1 — o utilizador pode forçar Claro/Escuro nas Definições;
-            // "Sistema" (default) continua a seguir o tema do dispositivo.
+            // O utilizador pode forçar o tema Claro ou Escuro nas Definições.
+            // A opção Sistema, que é a predefinida, segue o tema do dispositivo.
             val darkTheme = when (ThemeState.mode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false

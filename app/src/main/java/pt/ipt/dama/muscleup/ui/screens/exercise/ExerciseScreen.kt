@@ -93,6 +93,20 @@ private const val ANGLE_TOLERANCE_DEGREES = 2f
 private fun parseAngle(text: String): Float? = text.trim().replace(',', '.').toFloatOrNull()
 
 
+/**
+ * Ecrã de detalhe de um exercício.
+ *
+ * Apresenta e gere, em abas separadas:
+ * - **Séries pré-definidas** (modelo de treino);
+ * - **Configurações de máquina** (pesos, ângulos, notas);
+ * - **Fotos** do exercício (câmara ou galeria);
+ * - **Sessão atual** (registo em tempo real de séries realizadas);
+ * - **Histórico** de sessões anteriores e recordes pessoais.
+ *
+ * @param navController Controlador de navegação para transições entre ecrãs.
+ * @param viewModel ViewModel que gere o estado e a lógica do exercício.
+ * @param onLogout Callback invocada quando o utilizador termina sessão.
+ */
 @Composable
 fun ExerciseScreen(
     navController: NavController,
@@ -203,6 +217,7 @@ fun ExerciseScreen(
                 profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                onAppInfoClick = { navController.navigate(Screen.AppInfo.route) },
                 onLogoutClick = onLogout
             )
         },
@@ -858,6 +873,7 @@ fun AngleInputField(
 }
 
 
+/** Galeria horizontal de fotografias do exercício, com botão para adicionar novas fotografias. */
 @Composable
 fun ExercisePhotoGallery(
     photos: List<ExercisePhoto>,
@@ -1005,7 +1021,7 @@ fun PhotoViewerDialog(
                 )
             }
 
-            // Bolinhas indicadoras de página na parte inferior
+            // Indicadores de página na parte inferior do ecrã.
             if (photos.size > 1) {
                 Row(
                     modifier = Modifier

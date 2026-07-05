@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import pt.ipt.dama.muscleup.data.remote.AuthStateManager
 import pt.ipt.dama.muscleup.data.session.UserSession
+import pt.ipt.dama.muscleup.ui.screens.appinfo.AppInfoScreen
 import pt.ipt.dama.muscleup.ui.screens.auth.LoginScreen
 import pt.ipt.dama.muscleup.ui.screens.auth.RegisterScreen
 import pt.ipt.dama.muscleup.ui.screens.exercise.ExerciseScreen
@@ -51,8 +52,9 @@ sealed class Screen(val route: String) {
         fun go(exerciseId: String) = "exercise/$exerciseId"
     }
     object Profile  : Screen("profile")
+    object AppInfo  : Screen("app_info")
 
-    // Passo 10.1 — Definições (tema, idioma, logout)
+    // Definições (tema, idioma, logout)
     object Settings : Screen("settings")
 }
 
@@ -72,8 +74,6 @@ fun AppNavigation(
     }
 
     // Observa eventos de "sessão expirada" vindos de qualquer camada da app
-    // (ex: refreshToken rejeitado pelo servidor durante um pedido HTTP em background).
-    // Guarda: só actua se ainda houver sessão activa, para não entrar em loop.
     LaunchedEffect(Unit) {
         AuthStateManager.forceLogout.collect {
             if (UserSession.currentUserEmail.isNotBlank()) {
@@ -130,9 +130,10 @@ fun AppNavigation(
             val workoutId = backStackEntry.arguments?.getString("workoutId") ?: ""
             val exerciseId = backStackEntry.arguments?.getString("exerciseId").orEmpty()
 
-            // Tenta partilhar o WorkoutViewModel com o WorkoutScreen para o mesmo workoutId.
-            // Se a back stack não tiver o WorkoutScreen (ex: restauro de estado pelo Android),
-            // navega para Home em vez de crashar.
+            // Tenta partilhar o WorkoutViewModel com o WorkoutScreen para o mesmo treino.
+            // Se a pilha de navegação não tiver o WorkoutScreen, por exemplo devido a uma
+            // restauração de estado feita pelo Android, navega para o ecrã inicial em vez
+            // de falhar.
             val workoutBackStackEntry = remember(backStackEntry) {
                 try {
                     navController.getBackStackEntry(Screen.Workout.go(workoutId))
@@ -171,6 +172,7 @@ fun AppNavigation(
             ExerciseScreen(navController = navController, viewModel = exerciseViewModel, onLogout = handleLogout)
         }
         composable(Screen.Profile.route)  { ProfileScreen(navController, handleLogout) }
+        composable(Screen.AppInfo.route)  { AppInfoScreen(navController) }
         composable(Screen.Settings.route) { SettingsScreen(navController, handleLogout) }
     }
 }

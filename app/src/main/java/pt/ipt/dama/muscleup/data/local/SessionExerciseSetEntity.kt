@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import pt.ipt.dama.muscleup.model.SessionExerciseSet
 
+/** Entidade Room que representa uma série realizada numa sessão de treino, guardada localmente. */
 @Entity(
     tableName = "session_exercise_sets",
     foreignKeys = [ForeignKey(
@@ -24,11 +25,10 @@ data class SessionExerciseSetEntity(
     val weightKg: Float,
     val setOrder: Int,
     val createdAt: Long,
-    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
-    // não foi sincronizado (criado só localmente / offline).
     val remoteId: String? = null
 )
 
+/** Converte a entidade da base de dados no modelo de domínio [SessionExerciseSet]. */
 fun SessionExerciseSetEntity.toModel() = SessionExerciseSet(
     id = id,
     sessionId = sessionId,

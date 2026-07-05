@@ -183,7 +183,6 @@
     <string name="profile_password_changed_success">Password alterada com sucesso!</string>
     <string name="profile_error_change_password">Erro ao alterar password. Tenta novamente.</string>
 
-    <!-- Settings (Passo 10.1) -->
     <string name="settings_title">Definições</string>
     <string name="settings_section_appearance">Aparência</string>
     <string name="settings_theme_system">Sistema</string>
@@ -203,5 +202,30 @@
     <string name="settings_sync_still_pending">Ainda restam %1$d operações por sincronizar. Verifica a tua ligação e tenta novamente.</string>
     <string name="menu_settings">Definições</string>
     <string name="menu_profile">Perfil</string>
+    <string name="menu_app_info">Info da App</string>
     <string name="menu_logout">Sair</string>
+
+    <!-- App Info screen -->
+    <string name="appinfo_title">Sobre a Aplicação</string>
+    <string name="appinfo_section_academic">Informação Académica</string>
+    <string name="appinfo_label_institute">Instituto</string>
+    <string name="appinfo_value_institute">Instituto Politécnico de Tomar (IPT)</string>
+    <string name="appinfo_label_course">Curso</string>
+    <string name="appinfo_value_course">Mestrado em Engenharia Informática — Internet das Coisas</string>
+    <string name="appinfo_label_unit">Unidade Curricular</string>
+    <string name="appinfo_value_unit">Desenvolvimento de Aplicações Móveis para Android (DAMA)</string>
+    <string name="appinfo_label_year">Ano Letivo</string>
+    <string name="appinfo_value_year">2025/2026</string>
+    <string name="appinfo_section_authors">Autores</string>
+    <string name="appinfo_label_author1_number">Nº</string>
+    <string name="appinfo_value_author1_number">19262</string>
+    <string name="appinfo_label_author1_name">Nome</string>
+    <string name="appinfo_value_author1_name">João Alves</string>
+    <string name="appinfo_section_libraries">Bibliotecas Utilizadas</string>
+    <string name="appinfo_lib_version">Versão: %1$s</string>
+    <string name="appinfo_section_credentials">Credenciais de Teste</string>
+    <string name="appinfo_label_cred_email">E-mail</string>
+    <string name="appinfo_value_cred_email">demo@muscleup.pt</string>
+    <string name="appinfo_label_cred_password">Password</string>
+    <string name="appinfo_value_cred_password">Demo1234!</string>
 </resources>

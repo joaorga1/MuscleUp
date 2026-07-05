@@ -34,6 +34,7 @@ import androidx.navigation.NavController
 import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 
+/** Ecrã de registo de um novo utilizador. */
 @Composable
 fun RegisterScreen(
     navController: NavController,

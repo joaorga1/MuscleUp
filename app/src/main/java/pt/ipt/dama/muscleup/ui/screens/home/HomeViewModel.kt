@@ -26,6 +26,7 @@ import pt.ipt.dama.muscleup.model.Workout
 import pt.ipt.dama.muscleup.model.WorkoutType
 import java.util.UUID
 
+/** ViewModel do ecrã inicial: gere a lista de treinos e o logout. */
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
@@ -74,6 +75,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Atualiza o utilizador atual após login e sincroniza. */
     fun refreshSessionUser() {
         val resolvedUserId = resolveCurrentUserId()
         if (resolvedUserId == _currentUserId.value) return
@@ -83,8 +85,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Devolve o treino com o id indicado, se estiver em memória. */
     fun getWorkoutById(id: String): Workout? = _workouts.value.find { it.id == id }
 
+    /** Cria um novo treino, verificando duplicados. */
     fun addWorkout(title: String, description: String, type: WorkoutType) {
         val userId = _currentUserId.value
         val app = getApplication<MuscleUpApp>()
@@ -113,6 +117,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Atualiza um treino existente, verificando duplicados. */
     fun editWorkout(id: String, title: String, description: String, type: WorkoutType) {
         val userId = _currentUserId.value
         val app = getApplication<MuscleUpApp>()
@@ -143,6 +148,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Remove um treino. */
     fun deleteWorkout(id: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -159,12 +165,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Termina a sessão, tentando sincronizar a fila pendente antes de limpar os dados. */
     fun logout() {
         val app = getApplication<MuscleUpApp>()
-        // Tenta esvaziar a fila pendente ENQUANTO o token ainda é válido, antes de limpar a sessão.
         viewModelScope.launch {
-            try { app.syncManager.syncPending() } catch (_: Exception) { /* offline: ignorar */ }
-            try { app.apiService.logout() } catch (_: Exception) { /* stateless: ignorar erro */ }
+            try { app.syncManager.syncPending() } catch (_: Exception) { }
+            try { app.apiService.logout() } catch (_: Exception) { }
             app.tokenManager.clear()
             sessionPreferences.clear()
             UserSession.clear()
@@ -172,14 +178,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Esvazia primeiro a fila de operações pendentes e SÓ DEPOIS puxa o estado remoto.
+    /** Esvazia a fila pendente e traz os treinos remotos. */
     private suspend fun syncBeforePull(userId: String) {
         if (userId.isBlank()) return
         val app = getApplication<MuscleUpApp>()
-        try { app.syncManager.syncPending() } catch (_: Exception) { /* offline: ignorar */ }
+        try { app.syncManager.syncPending() } catch (_: Exception) { }
         app.syncManager.pullWorkouts(userId)
     }
 
+    /** Devolve o id do utilizador a partir das preferências ou da sessão em memória. */
     private fun resolveCurrentUserId(): String {
         return sessionPreferences.getSavedEmail().orEmpty().ifBlank { UserSession.currentUserEmail }
     }

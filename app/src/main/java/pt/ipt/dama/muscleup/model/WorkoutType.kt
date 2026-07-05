@@ -3,7 +3,9 @@ package pt.ipt.dama.muscleup.model
 import androidx.annotation.StringRes
 import pt.ipt.dama.muscleup.R
 
+/** Tipos de treino disponíveis na aplicação, cada um com o respetivo texto localizado associado. */
 enum class WorkoutType(@param:StringRes val labelRes: Int) {
+
     FORCA(R.string.workout_type_forca),
     HIPERTROFIA(R.string.workout_type_hipertrofia),
     CARDIO(R.string.workout_type_cardio),

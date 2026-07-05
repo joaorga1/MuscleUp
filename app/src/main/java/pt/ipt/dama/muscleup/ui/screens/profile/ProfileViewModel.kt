@@ -26,11 +26,7 @@ import pt.ipt.dama.muscleup.data.session.UserSession
 import java.io.File
 import java.io.IOException
 
-/**
- * Passo 8.2 — Perfil real via API (GET/PATCH /users/me, PUT /users/me/password,
- * POST/DELETE /users/me/photo). O Room continua a ser usado só como cache
- * offline (leitura instantânea + funcionamento sem rede).
- */
+/** ViewModel do ecrã de perfil: lê e atualiza os dados do utilizador via API. */
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app = application as MuscleUpApp
@@ -55,15 +51,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         viewModelScope.launch {
-            // 1. Mostra já o cache local (Room) — resposta instantânea, funciona offline.
             userDao.findByEmail(userEmail)?.profilePhotoUri?.ifBlank { null }?.let {
                 _profilePhotoUri.value = it
             }
-            // 2. Confirma/atualiza com a API (fonte de verdade).
+            // Confirma e atualiza depois com a API, que é a fonte de verdade.
             refreshFromApi()
         }
     }
 
+    /** Atualiza os dados do perfil a partir da API. */
     private suspend fun refreshFromApi() {
         try {
             val response = apiService.getCurrentUser()
@@ -75,14 +71,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 userDao.upsertMirror(user.name, user.email, user.profilePhotoUri)
             }
         } catch (_: Exception) {
-            // Sem rede: mantém o que já estava no cache local.
+            // Sem rede: mantém o que já estava na cópia local.
         }
     }
 
+    /** Envia uma fotografia de perfil para a API. */
     fun saveProfilePhoto(uriString: String) {
         viewModelScope.launch {
-            // Passo separado: erros de leitura/validação do ficheiro local (tamanho, etc.)
-            // já vêm localizados de uriToMultipart e não devem ser confundidos com "sem internet".
             val context = getApplication<Application>()
             val part = try {
                 uriToMultipart(context, uriString.toUri(), "photo")
@@ -195,6 +190,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Limpa a mensagem de erro do diálogo de alteração de palavra-passe. */
     fun clearPasswordError() {
         _passwordDialogError.value = null
     }

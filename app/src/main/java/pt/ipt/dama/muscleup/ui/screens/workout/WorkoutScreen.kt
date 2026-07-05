@@ -50,6 +50,7 @@ import pt.ipt.dama.muscleup.ui.components.AppTopBar
 import pt.ipt.dama.muscleup.ui.components.EmptyState
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 
+/** Ecrã de detalhe de um treino, com a lista de exercícios e ações de deslize para editar ou eliminar. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutScreen(
@@ -77,6 +78,7 @@ fun WorkoutScreen(
                 profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                onAppInfoClick = { navController.navigate(Screen.AppInfo.route) },
                 onLogoutClick = onLogout
             )
         },
@@ -105,9 +107,9 @@ fun WorkoutScreen(
         } else {
             val currentWorkout = workout!!
             if (currentWorkout.exercises.isEmpty()) {
-                Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                    // Show workout info at the top
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                        // Mostra as informações do treino no topo mesmo quando a lista de exercícios está vazia.
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         Text(
                             text = stringResource(currentWorkout.type.labelRes),
                             style = MaterialTheme.typography.labelSmall,
@@ -220,6 +222,7 @@ fun WorkoutScreen(
     }
 }
 
+/** Cartão com o resumo de um exercício, mostrado na lista do ecrã de treino. */
 @Composable
 fun ExerciseCard(exercise: Exercise, onClick: () -> Unit = {}) {
     Card(

@@ -26,11 +26,10 @@ interface UserDao {
 }
 
 /**
- * Passo 8.2 — Mantém uma cópia local (cache offline) dos dados do utilizador
- * autenticado via API, para a UI continuar a funcionar sem rede
- * (ex: mostrar a foto de perfil já descarregada anteriormente).
- * Não é a fonte de verdade — a API é. `passwordHash` deixa de ser usado
- * para validação (isso passa a ser feito no servidor), fica vazio.
+ * Insere ou atualiza a cópia local (mirror) dos dados do utilizador autenticado via API.
+ *
+ * - Se o utilizador ainda não existir localmente, cria um novo registo.
+ * - Se já existir, atualiza o nome e a foto de perfil.
  */
 suspend fun UserDao.upsertMirror(name: String, email: String, profilePhotoUri: String?) {
     val existing = findByEmail(email)

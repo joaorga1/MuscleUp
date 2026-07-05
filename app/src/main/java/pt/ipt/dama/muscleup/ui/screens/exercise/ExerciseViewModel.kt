@@ -40,6 +40,7 @@ import java.util.UUID
 
 private const val TAG = "ExerciseViewModel"
 
+/** Representa uma sessão de treino passada, com a lista de séries registadas. */
 data class ExerciseHistorySession(
     val sessionId: String,
     val createdAt: Long,
@@ -47,6 +48,7 @@ data class ExerciseHistorySession(
     val sets: List<SessionExerciseSet>
 )
 
+/** Recordes pessoais do utilizador para um determinado exercício. */
 data class ExercisePersonalRecord(
     val maxWeightKg: Float? = null,
     val maxWeightReps: Int? = null,
@@ -54,6 +56,15 @@ data class ExercisePersonalRecord(
     val maxDurationSeconds: Int? = null
 )
 
+/**
+ * ViewModel do ecrã de detalhe de um exercício.
+ *
+ * Gere séries pré-definidas, configurações de máquina, fotos e sessões de treino (draft e histórico).
+ * Sincroniza com a API no arranque e após cada operação de escrita.
+ *
+ * @param application Contexto da aplicação.
+ * @param exerciseId Identificador do exercício a gerir.
+ */
 class ExerciseViewModel(
     application: Application,
     private val exerciseId: String
@@ -74,7 +85,6 @@ class ExerciseViewModel(
 
     init {
         restoreDraftSession()
-        // Passo 8.3 — esvazia primeiro a fila pendente e só depois traz da API os dados
         // (sets, machine configs, fotos, histórico de sessões) que ainda não existem localmente.
         viewModelScope.launch {
             val app = getApplication<MuscleUpApp>()
@@ -157,6 +167,7 @@ class ExerciseViewModel(
     private val _uiEvent = MutableSharedFlow<String>()
     val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
 
+    /** Adiciona uma série pré-definida ao modelo de treino do exercício. */
     fun addPredefinedSet(reps: Int, weightKg: Float?, durationSeconds: Int?) {
         if (reps <= 0) {
             viewModelScope.launch { _uiEvent.emit(getApplication<Application>().getString(R.string.exercise_error_reps_positive)) }
@@ -188,6 +199,7 @@ class ExerciseViewModel(
         }
     }
 
+    /** Remove uma série pré-definida pelo seu identificador. */
     fun removePredefinedSet(setId: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -204,6 +216,7 @@ class ExerciseViewModel(
         }
     }
 
+    /** Guarda uma nova configuração de máquina (nome, descrição e ângulo opcional) para este exercício. */
     fun addMachineConfig(name: String, description: String, angleDegrees: Float? = null) {
         if (name.isBlank()) {
             viewModelScope.launch { _uiEvent.emit(getApplication<Application>().getString(R.string.exercise_error_config_name_empty)) }
@@ -229,6 +242,7 @@ class ExerciseViewModel(
         }
     }
 
+    /** Remove uma configuração de máquina pelo seu identificador. */
     fun removeMachineConfig(configId: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -245,12 +259,14 @@ class ExerciseViewModel(
         }
     }
 
+    /** Cria um ficheiro temporário no FileProvider e devolve o [Uri] para a câmara escrever. */
     fun createPhotoUri(context: Context): Uri {
         val dir = File(context.filesDir, "exercise_photos").apply { if (!exists()) mkdirs() }
         val file = File(dir, "${exerciseId}_${UUID.randomUUID()}.jpg")
         return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     }
 
+    /** Guarda uma foto do exercício a partir do [uri] fornecido. Rejeita ficheiros superiores a 10 MB. */
     fun addPhoto(uri: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -280,6 +296,7 @@ class ExerciseViewModel(
         }
     }
 
+    /** Remove uma foto pelo seu identificador e apaga o ficheiro local se for do FileProvider. */
     fun removePhoto(photoId: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -311,6 +328,7 @@ class ExerciseViewModel(
         }
     }
 
+    /** Regista uma série na sessão de treino em curso (cria um draft se ainda não existir). */
     fun addRecordedSet(reps: Int, weightKg: Float?, durationSeconds: Int?) {
         if (reps <= 0) {
             viewModelScope.launch { _uiEvent.emit(getApplication<Application>().getString(R.string.exercise_error_reps_positive)) }
@@ -346,6 +364,7 @@ class ExerciseViewModel(
         }
     }
 
+    /** Remove uma série registada da sessão em curso. */
     fun removeRecordedSet(setId: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -363,6 +382,7 @@ class ExerciseViewModel(
         }
     }
 
+    /** Termina e guarda a sessão de treino atual. Requer pelo menos uma série registada. */
     fun finalizeSession() {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -385,6 +405,7 @@ class ExerciseViewModel(
         }
     }
 
+    /** Descarta a sessão de treino em curso, apagando todas as séries registadas. */
     fun clearSession() {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -435,7 +456,7 @@ class ExerciseViewModel(
         viewModelScope.launch {
             val userId = resolveCurrentUserId()
             if (userId.isBlank()) {
-                Log.w(TAG, "Cannot restore draft session without user id")
+                Log.w(TAG, "Não é possível restaurar a sessão em rascunho sem um identificador de utilizador.")
                 return@launch
             }
 
@@ -447,22 +468,25 @@ class ExerciseViewModel(
 
             currentSessionId = draftSession.id
             reloadCurrentSessionSets(draftSession.id)
-            Log.d(TAG, "Restored draft session ${draftSession.id} with ${_currentSessionSets.value.size} sets")
+            Log.d(TAG, "Sessão em rascunho ${draftSession.id} restaurada com ${_currentSessionSets.value.size} séries.")
         }
     }
 
+    /** Recarrega as séries da sessão indicada para [currentSessionSets]. */
     private suspend fun reloadCurrentSessionSets(sessionId: String) {
         _currentSessionSets.value = sessionDao
             .getSetsForSessionOnce(sessionId)
             .map { it.toModel() }
     }
 
+    /** Repõe o estado da sessão em curso, indicando que não existe nenhuma sessão ativa. */
     private fun resetCurrentSessionState() {
         currentSessionId = null
         _currentSessionSets.value = emptyList()
     }
 
     companion object {
+    /** Cria a fábrica para instanciar o ExerciseViewModel com o id do exercício. */
         fun factory(exerciseId: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {

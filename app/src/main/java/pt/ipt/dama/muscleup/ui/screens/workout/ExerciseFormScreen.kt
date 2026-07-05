@@ -28,6 +28,7 @@ import androidx.navigation.NavController
 import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
 
+/** Ecrã de criação ou edição de um exercício de um treino. */
 @Composable
 fun ExerciseFormScreen(
     navController: NavController,
@@ -97,7 +98,7 @@ fun ExerciseFormScreen(
                     } else {
                         viewModel.addExercise(name, description, targetMuscle)
                     }
-                    // navegação feita pelo LaunchedEffect que reage a navigateBack
+                    // A navegação é feita pelo LaunchedEffect que reage a navigateBack.
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = name.isNotBlank() && targetMuscle.isNotBlank()

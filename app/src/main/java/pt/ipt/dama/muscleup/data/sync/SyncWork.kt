@@ -11,6 +11,8 @@ import androidx.work.WorkerParameters
 import pt.ipt.dama.muscleup.MuscleUpApp
 import java.util.concurrent.TimeUnit
 private const val UNIQUE_WORK_NAME = "sync_pending_operations"
+
+/** Worker do WorkManager que processa a fila de sincronização pendente. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext as MuscleUpApp
@@ -21,7 +23,11 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
     }
 }
+
+/** Agenda o trabalho de sincronização via WorkManager. */
 object SyncScheduler {
+
+    /** Agenda uma sincronização (só executa com rede; não substitui pedidos já existentes). */
     fun requestSync(context: Context) {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -31,14 +37,7 @@ object SyncScheduler {
             .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
     }
 
-    /**
-     * Força uma nova tentativa de sincronização AGORA, ignorando o backoff exponencial de
-     * qualquer tentativa anterior que ainda esteja "em espera" (ex: depois de várias falhas,
-     * o WorkManager pode só tentar de novo daqui a várias horas). Ao contrário de [requestSync]
-     * (que usa `KEEP` e não faz nada se já houver trabalho agendado), aqui usa-se `REPLACE`
-     * para cancelar essa espera e tentar imediatamente. Chamado pelo botão "Forçar
-     * sincronização" no ecrã de Definições.
-     */
+    /** Força uma nova tentativa imediata, substituindo qualquer pedido já agendado. */
     fun forceSyncNow(context: Context) {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -48,3 +47,5 @@ object SyncScheduler {
             .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, request)
     }
 }
+
+

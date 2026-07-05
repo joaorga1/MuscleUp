@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/** Entidade Room que representa uma sessão de treino de um exercício, guardada localmente. */
 @Entity(
     tableName = "exercise_sessions",
     foreignKeys = [ForeignKey(
@@ -22,8 +23,6 @@ data class ExerciseSessionEntity(
     val createdAt: Long,
     val finishedAt: Long? = null,
     val status: String = "DRAFT",
-    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
-    // não foi sincronizado (criado só localmente / offline).
     val remoteId: String? = null
 )
 

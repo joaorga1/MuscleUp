@@ -50,6 +50,16 @@ import pt.ipt.dama.muscleup.ui.components.AppTopBar
 import pt.ipt.dama.muscleup.ui.components.EmptyState
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 
+/**
+ * Ecrã principal da aplicação.
+ *
+ * Lista todos os treinos do utilizador com suporte a swipe-to-delete e navegação para o detalhe
+ * de cada treino. O FAB abre o formulário de criação ([WorkoutFormScreen]).
+ *
+ * @param navController Controlador de navegação para transições entre ecrãs.
+ * @param viewModel ViewModel partilhado entre este ecrã e o [WorkoutFormScreen].
+ * @param onLogout Callback invocada quando o utilizador termina sessão.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -80,6 +90,7 @@ fun HomeScreen(
                 profilePhotoUri = profilePhotoUri,
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                onAppInfoClick = { navController.navigate(Screen.AppInfo.route) },
                 onLogoutClick = onLogout
             )
         },
@@ -175,6 +186,7 @@ fun HomeScreen(
 }
 
 
+/** Cartão com o resumo de um treino, mostrado na lista do ecrã inicial. */
 @Composable
 fun WorkoutCard(workout: Workout, onClick: () -> Unit) {
     Card(

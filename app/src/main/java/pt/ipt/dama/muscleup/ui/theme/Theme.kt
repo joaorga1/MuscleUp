@@ -66,6 +66,7 @@ private val LightColorScheme = lightColorScheme(
     surfaceTint = Orange500
 )
 
+/** Tema visual (Material 3) da aplicação MuscleUp, aplicando o esquema de cores claro ou escuro. */
 @Composable
 fun MuscleUpTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

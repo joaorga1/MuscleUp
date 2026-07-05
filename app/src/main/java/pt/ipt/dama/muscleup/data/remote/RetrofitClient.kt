@@ -19,22 +19,20 @@ import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-/** Corpo de erro devolvido pela API: `{ "code": "...", "message": "..." }` */
+/** Corpo de erro devolvido pela API, no formato `{ "code": "...", "message": "..." }`. */
 data class ApiErrorBody(val code: String = "UNKNOWN_ERROR", val message: String = "")
 
-/** Envelope de erro da API: `{ "error": { "code": "...", "message": "..." } }` */
+/** Envelope de erro da API, no formato `{ "error": { "code": "...", "message": "..." } }`. */
 data class ApiErrorEnvelope(val error: ApiErrorBody? = null)
 
 /**
  * Erro lançado por [uriToMultipart] quando o ficheiro escolhido excede o limite de tamanho.
- * Distinto de um [IOException] "genérico" de rede para que os ViewModels não confundam
- * "ficheiro demasiado grande" com "sem internet" — a mensagem já vem localizada.
  */
 class PhotoTooLargeException(message: String) : IOException(message)
 
 private const val MAX_PHOTO_BYTES = 10L * 1024 * 1024 // 10 MB
 
-/** Converte um Uri local (câmara/galeria) num MultipartBody.Part pronto a enviar para a API. */
+/** Converte um Uri local, vindo da câmara ou da galeria, num MultipartBody.Part pronto a enviar para a API. */
 fun uriToMultipart(context: Context, uri: Uri, partName: String = "photo"): MultipartBody.Part {
     val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
     val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -49,12 +47,10 @@ fun uriToMultipart(context: Context, uri: Uri, partName: String = "photo"): Mult
 }
 
 /**
- * Anexa o header `Accept-Language` (pt/en) consoante o idioma atual da app, para que a API
- * (Node.js — só devolve mensagens em português por omissão) responda também em inglês
- * quando é esse o idioma escolhido pelo utilizador. Sem este header, mensagens de erro
- * geradas pelo servidor (ex: "Credenciais inválidas") ficariam sempre em português.
+ * Anexa o cabeçalho Accept-Language, português ou inglês, consoante o idioma atual da app
  */
 class AcceptLanguageInterceptor(private val context: Context) : okhttp3.Interceptor {
+    /** Adiciona o cabeçalho Accept-Language a cada pedido antes de o encaminhar. */
     override fun intercept(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
         val language = LanguagePreferences(context).getEffectiveLanguage()
         val request = chain.request().newBuilder()
@@ -65,10 +61,10 @@ class AcceptLanguageInterceptor(private val context: Context) : okhttp3.Intercep
 }
 
 /**
- * Passo 8.1 — Constrói o singleton do Retrofit/OkHttpClient apontado para [BASE_URL].
- * Inclui logging de pedidos (apenas útil durante desenvolvimento), o [AuthInterceptor]
+ * Constrói o singleton do Retrofit e do OkHttpClient apontado para o endereço base da API.
+ * Inclui registo de pedidos, útil apenas durante o desenvolvimento, o [AuthInterceptor]
  * para anexar o token JWT automaticamente, e o [TokenAuthenticator] para o renovar
- * sozinho quando expira (accessToken dura só 15min).
+ * sozinho quando expira, uma vez que o accessToken dura apenas 15 minutos.
  */
 object RetrofitClient {
 
@@ -80,9 +76,9 @@ object RetrofitClient {
     private val gson = Gson()
 
     /**
-     * Devolve o OkHttpClient singleton com os interceptors de autenticação já configurados.
-     * Partilhado entre Retrofit e o ImageLoader do Coil — garante que pedidos de imagens
-     * para a API (ex: foto de perfil) também enviam o header `Authorization: Bearer`.
+     * Devolve o OkHttpClient singleton com os interceptores de autenticação já configurados.
+     * É partilhado entre o Retrofit e o ImageLoader do Coil, o que garante que os pedidos
+     * de imagens para a API
      */
     fun getOkHttpClient(tokenManager: TokenManager, context: Context): OkHttpClient {
         return okHttpClient ?: synchronized(this) {
@@ -92,6 +88,7 @@ object RetrofitClient {
         }
     }
 
+    /** Devolve o serviço de API singleton, criando o Retrofit na primeira utilização. */
     fun getApiService(tokenManager: TokenManager, context: Context): ApiService {
         return apiService ?: synchronized(this) {
             apiService ?: buildRetrofit(
@@ -100,6 +97,7 @@ object RetrofitClient {
         }
     }
 
+    /** Monta o OkHttpClient com todos os interceptores e o autenticador de tokens. */
     private fun buildOkHttpClient(tokenManager: TokenManager, context: Context): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -116,6 +114,7 @@ object RetrofitClient {
             .build()
     }
 
+    /** Monta a instância do Retrofit apontada para o endereço base da API. */
     private fun buildRetrofit(client: OkHttpClient): Retrofit {
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
@@ -124,7 +123,7 @@ object RetrofitClient {
             .build()
     }
 
-    /** Faz parsing do corpo de erro padrão `{ "error": { "code", "message" } }` da API. */
+    /** Extrai o corpo de erro padrão da API, no formato `{ "error": { "code", "message" } }`. */
     fun <T> parseError(response: Response<T>, context: Context): ApiErrorBody {
         val fallbackMessage = context.getString(R.string.error_api_with_code, response.code())
         return try {
@@ -137,8 +136,6 @@ object RetrofitClient {
         }
     }
 }
-
-
 
 
 

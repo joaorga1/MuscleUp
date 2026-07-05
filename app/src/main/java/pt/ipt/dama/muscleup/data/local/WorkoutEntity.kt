@@ -5,18 +5,18 @@ import androidx.room.PrimaryKey
 import pt.ipt.dama.muscleup.model.Workout
 import pt.ipt.dama.muscleup.model.WorkoutType
 
+/** Entidade Room que representa um treino, guardada localmente. */
 @Entity(tableName = "workouts")
 data class WorkoutEntity(
     @PrimaryKey val id: String,
     val userId: String,
     val title: String,
     val description: String,
-    val type: String,   // WorkoutType.name
-    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
-    // não foi sincronizado (criado só localmente / offline).
+    val type: String,   // Nome do valor de WorkoutType.
     val remoteId: String? = null
 )
 
+/** Converte a entidade da base de dados no modelo de domínio [Workout]. */
 fun WorkoutEntity.toModel(exercises: List<pt.ipt.dama.muscleup.model.Exercise> = emptyList()) = Workout(
     id = id,
     userId = userId,

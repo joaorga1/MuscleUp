@@ -39,7 +39,7 @@ import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
 import pt.ipt.dama.muscleup.ui.theme.ThemeMode
 
-/** Passo 10.1 — Ecrã de Definições: tema, idioma e logout. */
+/** Ecrã de Definições: tema, idioma e logout. */
 @Composable
 fun SettingsScreen(
     navController: NavController,
@@ -56,11 +56,10 @@ fun SettingsScreen(
         viewModel.uiEvent.collect { snackbarHostState.showSnackbar(it) }
     }
 
+    /** Altera o idioma da aplicação e recria a Activity para o efeito ser imediato. */
     fun changeLanguage(tag: String) {
         languageTag = tag
         viewModel.setLanguage(tag)
-        // A app não usa AppCompatActivity, por isso a mudança de idioma só é aplicada
-        // aos recursos em attachBaseContext() — é preciso recriar a Activity para ter efeito.
         activity?.recreate()
     }
 

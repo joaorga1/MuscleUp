@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import pt.ipt.dama.muscleup.model.ExercisePhoto
 
+/** Entidade Room que representa uma fotografia associada a um exercício, guardada localmente. */
 @Entity(
     tableName = "exercise_photos",
     foreignKeys = [ForeignKey(
@@ -21,11 +22,10 @@ data class ExercisePhotoEntity(
     val exerciseId: String,
     val uri: String,
     val createdAt: Long,
-    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
-    // não foi sincronizado (criado só localmente / offline).
     val remoteId: String? = null
 )
 
+/** Converte a entidade da base de dados no modelo de domínio [ExercisePhoto]. */
 fun ExercisePhotoEntity.toModel() = ExercisePhoto(
     id = id,
     uri = uri,

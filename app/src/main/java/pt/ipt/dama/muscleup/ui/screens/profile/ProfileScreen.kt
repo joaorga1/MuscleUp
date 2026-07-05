@@ -62,6 +62,20 @@ import pt.ipt.dama.muscleup.ui.components.AppTopBar
 import pt.ipt.dama.muscleup.util.rememberImageModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 
+/**
+ * Ecrã de Perfil do utilizador.
+ *
+ * Permite:
+ * - Visualizar e editar a foto de perfil (câmara ou galeria);
+ * - Editar o nome de exibição;
+ * - Consultar o e-mail da conta (só leitura);
+ * - Alterar a palavra-passe através de um diálogo dedicado;
+ * - Terminar sessão via [onLogout].
+ *
+ * @param navController Controlador de navegação usado para regressar ao ecrã anterior.
+ * @param onLogout Callback invocada quando o utilizador confirma o logout.
+ * @param viewModel ViewModel que gere o estado e a lógica do ecrã.
+ */
 @Composable
 fun ProfileScreen(
     navController: NavController,
@@ -381,6 +395,7 @@ fun ProfileScreen(
     }
 }
 
+/** Linha de informação do perfil, com rótulo, valor e botão de edição opcional. */
 @Composable
 private fun ProfileInfoRow(
     label: String,

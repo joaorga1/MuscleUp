@@ -34,6 +34,7 @@ import androidx.navigation.NavController
 import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.ui.navigation.Screen
 
+/** Ecrã de autenticação (login) do utilizador. */
 @Composable
 fun LoginScreen(
     navController: NavController,

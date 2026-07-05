@@ -47,8 +47,10 @@ class InclinometerViewModel(application: Application) : AndroidViewModel(applica
         _angleDegrees.value = Math.toDegrees(asin((y / norm).coerceIn(-1.0, 1.0))).toFloat()
     }
 
+    /** Chamado pelo sistema quando a precisão do sensor muda; ignorado pois não é relevante para o inclinómetro. */
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
+    /** Para o sensor automaticamente quando o ViewModel é destruído. */
     override fun onCleared() = stop()
 }
 

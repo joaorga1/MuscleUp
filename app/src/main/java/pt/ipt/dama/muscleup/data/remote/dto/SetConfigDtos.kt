@@ -1,9 +1,8 @@
 package pt.ipt.dama.muscleup.data.remote.dto
 
-// ---------------------------------------------------------------------------------
-// Passo 8.1 — DTOs de Exercise Sets / Machine Configs (secções 9 e 10 do API_SPEC.md)
-// ---------------------------------------------------------------------------------
+// Modelos de dados de transferência (DTOs) relativos a séries de exercício e a configurações de máquina.
 
+/** Dados de uma série pré-definida de exercício devolvidos pela API. */
 data class ExerciseSetDto(
     val id: String,
     val exerciseId: String,
@@ -13,6 +12,7 @@ data class ExerciseSetDto(
     val weightKg: Double
 )
 
+/** Dados enviados para criar uma nova série pré-definida de exercício. */
 data class ExerciseSetRequest(
     val reps: Int,
     val weightKg: Double? = null,
@@ -21,6 +21,7 @@ data class ExerciseSetRequest(
     val clientId: String? = null
 )
 
+/** Dados de uma configuração de máquina devolvidos pela API. */
 data class MachineConfigDto(
     val id: String,
     val exerciseId: String,
@@ -29,6 +30,7 @@ data class MachineConfigDto(
     val angleDegrees: Double?
 )
 
+/** Dados enviados para criar uma nova configuração de máquina. */
 data class MachineConfigRequest(
     val name: String,
     val description: String,

@@ -18,12 +18,10 @@ import pt.ipt.dama.muscleup.ui.theme.ThemeState
 import java.util.Locale
 
 /**
- * Passo 10.1 — Ecrã de Definições: tema (Sistema/Claro/Escuro), idioma (PT/EN) e logout.
+ * ViewModel do ecrã de Definições.
  *
- * O idioma é guardado em [pt.ipt.dama.muscleup.data.session.LanguagePreferences] (SharedPreferences
- * simples) e aplicado manualmente em `attachBaseContext()` (ver `LocaleUtils.kt`) — por isso o
- * ecrã que chama `setLanguage()` tem de forçar um `recreate()` da Activity para o efeito ser
- * imediato (ver SettingsScreen).
+ * Gere as preferências de tema (Sistema/Claro/Escuro) via [pt.ipt.dama.muscleup.ui.theme.ThemeState]
+ * e de idioma (PT/EN) via [pt.ipt.dama.muscleup.data.session.LanguagePreferences].
  */
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -57,17 +55,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         return if (Locale.getDefault().language == "en") "en" else "pt"
     }
 
-    /** [languageTag] é "pt" ou "en". Português usa sempre a variante de Portugal (pt-PT). */
+    /** Guarda o idioma escolhido pelo utilizador. O parâmetro [languageTag] deve ser "pt" ou "en". */
     fun setLanguage(languageTag: String) {
         languagePreferences.save(languageTag)
     }
 
-    /**
-     * Botão "Forçar sincronização": delega no [pt.ipt.dama.muscleup.data.sync.SyncManager]
-     * (dono da lógica de negócio de sincronização) a tentativa imediata de esvaziar a fila.
-     * Este ViewModel só trata da parte de apresentação: agenda um retry em background via
-     * WorkManager se ainda sobrar alguma coisa, e escolhe a mensagem certa para o [uiEvent].
-     */
+    /** Tenta esvaziar a fila imediatamente e agenda nova tentativa pelo WorkManager se necessário. */
     fun forceSync() {
         viewModelScope.launch {
             val remaining = app.syncManager.forcePushNow()
@@ -79,8 +72,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 }
-
-
 
 
 

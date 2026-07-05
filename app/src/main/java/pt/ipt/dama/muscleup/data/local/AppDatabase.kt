@@ -7,6 +7,10 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 
+/**
+ * Base de dados local (Room) da aplicação, usada como cache offline de todas as entidades
+ * e como suporte à fila de sincronização com a API remota.
+ */
 @Database(
     entities = [UserEntity::class, WorkoutEntity::class, ExerciseEntity::class, ExerciseSetEntity::class, ExerciseSessionEntity::class, SessionExerciseSetEntity::class, MachineConfigEntity::class, ExercisePhotoEntity::class, PendingSyncEntity::class],
     version = 14,
@@ -26,6 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
 
+        /** Cria a tabela de séries de exercício (exercise_sets). */
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -211,7 +216,6 @@ abstract class AppDatabase : RoomDatabase() {
 
         private val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Passo 8.3 — sincronização offline-first
                 db.execSQL("ALTER TABLE workouts ADD COLUMN remoteId TEXT")
                 db.execSQL(
                     """
@@ -231,14 +235,12 @@ abstract class AppDatabase : RoomDatabase() {
 
         private val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Passo 8.3 — extensão do padrão outbox (offline-first) à vertical de Exercises.
                 db.execSQL("ALTER TABLE exercises ADD COLUMN remoteId TEXT")
             }
         }
 
         private val MIGRATION_13_14 = object : Migration(13, 14) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Passo 8.3 — extensão do padrão outbox (offline-first) a Exercise Sets,
                 // Machine Configs, Exercise Photos e Exercise Sessions/Session Sets.
                 db.execSQL("ALTER TABLE exercise_sets ADD COLUMN remoteId TEXT")
                 db.execSQL("ALTER TABLE machine_configs ADD COLUMN remoteId TEXT")
@@ -248,6 +250,10 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Devolve a instância única (singleton) da base de dados, aplicando todas as
+         * migrações necessárias entre versões do esquema.
+         */
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(

@@ -16,6 +16,7 @@ import pt.ipt.dama.muscleup.data.remote.dto.RegisterRequest
 import pt.ipt.dama.muscleup.data.session.UserSession
 import java.io.IOException
 
+/** Estados possíveis do ecrã de autenticação. */
 sealed class AuthUiState {
     object Idle : AuthUiState()
     object Loading : AuthUiState()
@@ -23,12 +24,7 @@ sealed class AuthUiState {
     data class Error(val message: String) : AuthUiState()
 }
 
-/**
- * Passo 8.2 — Autenticação real via API (POST /api/auth/login, /register).
- * O JWT (accessToken/refreshToken) é guardado pelo TokenManager e a sessão
- * local (1 ano) continua a ser gerida por SessionPreferences, para permitir
- * login automático offline.
- */
+/** ViewModel de autenticação: login e registo via API. */
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app = application as MuscleUpApp
@@ -69,6 +65,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Regista um novo utilizador na API, validando os campos antes de os enviar. */
     fun register(name: String, email: String, password: String, confirmPassword: String) {
         if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
             _uiState.value = AuthUiState.Error(app.getString(R.string.error_fill_fields))
@@ -100,14 +97,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Guarda tokens e dados do utilizador após autenticação bem-sucedida. */
     private suspend fun onAuthSuccess(auth: AuthResponse) {
         tokenManager.saveTokens(auth.accessToken, auth.refreshToken)
-        // userId local mantém-se = email (comportamento já existente), para não quebrar
-        // o particionamento local de treinos/exercícios/sessões (Room) por utilizador.
         UserSession.set(name = auth.user.name, email = auth.user.email)
         sessionPreferences.save(email = auth.user.email, name = auth.user.name)
-        // Cache local (offline) do perfil — não é fonte de verdade, só para leitura rápida/offline.
         userDao.upsertMirror(auth.user.name, auth.user.email, auth.user.profilePhotoUri)
         _uiState.value = AuthUiState.Success(auth.user.name)
     }
 }
+
+

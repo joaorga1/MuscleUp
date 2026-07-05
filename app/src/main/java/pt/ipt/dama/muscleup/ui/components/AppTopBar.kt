@@ -44,6 +44,7 @@ fun AppTopBar(
     onBackClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onAppInfoClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
 ) {
     TopAppBar(
@@ -62,6 +63,7 @@ fun AppTopBar(
                     profilePhotoUri = profilePhotoUri,
                     onProfileClick = onProfileClick,
                     onSettingsClick = onSettingsClick,
+                    onAppInfoClick = onAppInfoClick,
                     onLogoutClick = onLogoutClick
                 )
             }
@@ -69,6 +71,7 @@ fun AppTopBar(
     )
 }
 
+/** Avatar do utilizador, mostrando a fotografia de perfil ou a inicial do nome, com menu de ações associado. */
 @Composable
 fun UserAvatar(
     userName: String,
@@ -76,11 +79,13 @@ fun UserAvatar(
     profilePhotoUri: String? = null,
     onProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onAppInfoClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
 ) {
     val initial = userName.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
     var expanded by remember { mutableStateOf(false) }
-    // Resets when the URI changes (ex: após upload ou remoção de foto de perfil)
+    // O estado de falha na imagem é reiniciado quando o URI muda, por exemplo após
+    // envio ou remoção da fotografia de perfil.
     var imageLoadFailed by remember(profilePhotoUri) { mutableStateOf(false) }
 
     Box(modifier = modifier.padding(end = 12.dp)) {
@@ -122,6 +127,10 @@ fun UserAvatar(
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_settings)) },
                 onClick = { expanded = false; onSettingsClick() }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.menu_app_info)) },
+                onClick = { expanded = false; onAppInfoClick() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_logout)) },

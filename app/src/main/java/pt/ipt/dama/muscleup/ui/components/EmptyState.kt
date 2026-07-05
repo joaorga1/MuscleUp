@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+/** Ecrã de estado vazio, com ícone, título e subtítulo, usado quando não há dados para mostrar. */
 @Composable
 fun EmptyState(
     icon: ImageVector,

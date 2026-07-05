@@ -24,6 +24,16 @@ import pt.ipt.dama.muscleup.data.session.UserSession
 import pt.ipt.dama.muscleup.model.Workout
 import java.util.UUID
 
+/**
+ * ViewModel do ecrã de detalhe de um treino.
+ *
+ * Gere a lista de exercícios associados ao treino identificado por [workoutId], incluindo
+ * criação, edição e remoção. Sincroniza automaticamente com a API no arranque, esvaziando
+ * primeiro a fila de operações pendentes antes de fazer pull dos dados remotos.
+ *
+ * @param application Contexto da aplicação, necessário para aceder à base de dados e ao syncManager.
+ * @param workoutId Identificador do treino cujos exercícios devem ser geridos.
+ */
 class WorkoutViewModel(
     application: Application,
     val workoutId: String
@@ -35,7 +45,7 @@ class WorkoutViewModel(
     private val userDao = db.userDao()
 
     init {
-        // Passo 8.3 — esvazia primeiro a fila pendente (para não "ressuscitar" exercises
+        // esvazia primeiro a fila pendente (para não "ressuscitar" exercises
         // apagados offline) e só depois traz da API os que ainda não existem localmente.
         viewModelScope.launch {
             val app = getApplication<MuscleUpApp>()
@@ -64,6 +74,7 @@ class WorkoutViewModel(
     private val _navigateBack = MutableSharedFlow<Unit>()
     val navigateBack: SharedFlow<Unit> = _navigateBack.asSharedFlow()
 
+    /** Adiciona um novo exercício ao treino. Rejeita nomes duplicados dentro do mesmo treino. */
     fun addExercise(name: String, description: String, targetMuscle: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -89,6 +100,7 @@ class WorkoutViewModel(
         }
     }
 
+    /** Atualiza os dados de um exercício existente. Rejeita nomes duplicados e preserva o `remoteId` já atribuído. */
     fun editExercise(exerciseId: String, name: String, description: String, targetMuscle: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -117,6 +129,7 @@ class WorkoutViewModel(
         }
     }
 
+    /** Remove um exercício do treino. */
     fun deleteExercise(exerciseId: String) {
         val app = getApplication<MuscleUpApp>()
         viewModelScope.launch {
@@ -133,8 +146,8 @@ class WorkoutViewModel(
         }
     }
 
-
     companion object {
+        /** Cria a fábrica necessária para instanciar o WorkoutViewModel com o identificador do treino. */
         fun factory(workoutId: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {

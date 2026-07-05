@@ -39,6 +39,16 @@ import pt.ipt.dama.muscleup.R
 import pt.ipt.dama.muscleup.model.WorkoutType
 import pt.ipt.dama.muscleup.ui.components.AppTopBar
 
+/**
+ * Ecrã de criação e edição de treinos.
+ *
+ * Quando [workoutId] é `null`, cria um novo treino; caso contrário, pré-preenche os campos
+ * com os dados existentes para edição. Ao guardar com sucesso, navega automaticamente para trás.
+ *
+ * @param navController Controlador de navegação usado para regressar ao ecrã anterior.
+ * @param viewModel ViewModel partilhado com o [HomeScreen].
+ * @param workoutId Identificador do treino a editar, ou `null` para criação.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun WorkoutFormScreen(
@@ -147,7 +157,7 @@ fun WorkoutFormScreen(
                         } else {
                             viewModel.addWorkout(title.trim(), description.trim(), selectedType!!)
                         }
-                        // navegação feita pelo LaunchedEffect que reage a navigateBack
+                        // A navegação é feita pelo LaunchedEffect que reage a navigateBack.
                     }
                 },
                 modifier = Modifier.fillMaxWidth()

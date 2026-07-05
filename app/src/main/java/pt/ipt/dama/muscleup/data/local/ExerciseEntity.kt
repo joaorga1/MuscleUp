@@ -8,6 +8,7 @@ import pt.ipt.dama.muscleup.model.Exercise
 import pt.ipt.dama.muscleup.model.ExerciseSet
 import pt.ipt.dama.muscleup.model.MachineConfig
 
+/** Entidade Room que representa um exercício de um treino, guardada localmente. */
 @Entity(
     tableName = "exercises",
     foreignKeys = [ForeignKey(
@@ -24,11 +25,10 @@ data class ExerciseEntity(
     val name: String,
     val description: String,
     val targetMuscle: String,
-    // Passo 8.3 — id do documento correspondente na API (Mongo _id). Null enquanto ainda
-    // não foi sincronizado (criado só localmente / offline).
     val remoteId: String? = null
 )
 
+/** Converte a entidade da base de dados no modelo de domínio [Exercise]. */
 fun ExerciseEntity.toModel(
     sets: List<ExerciseSet> = emptyList(),
     machineConfigs: List<MachineConfig> = emptyList()

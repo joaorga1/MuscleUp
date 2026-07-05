@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/** Entidade Room que representa a cópia local dos dados de um utilizador autenticado. */
 @Entity(
+
     tableName = "users",
     indices = [Index(value = ["email"], unique = true)]
 )
