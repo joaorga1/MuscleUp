@@ -28,8 +28,8 @@ android {
         applicationId = "pt.ipt.dama.MuscleUp"
         minSdk = 28
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         // URL base da API — lida de local.properties para não expor no repositório.
         val apiBaseUrl = localProps.getProperty("API_BASE_URL", "http://192.168.1.236:3000/")
